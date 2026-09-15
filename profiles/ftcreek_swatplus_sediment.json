@@ -1,0 +1,58 @@
+{
+  "profile_id": "ftcreek_swatplus_sediment",
+  "display_name": "FtCreek SWAT+ HRU sediment BMP optimization",
+  "model_family": "swatplus",
+  "support_status": "executable",
+  "aliases": ["FtCreek", "Fountain Creek", "SWAT+ FtCreek"],
+  "supported_targets": ["sediment", "sediment_yield", "hru_sediment_yield"],
+  "supported_units": ["HRU"],
+  "supported_measures": [
+    {"code": 0, "name": "BMP-8", "label": "up_down_slope"},
+    {"code": 1, "name": "BMP-9", "label": "contour_1-2"}
+  ],
+  "default_decision_variable": {
+    "spatial_discretization": "HRU",
+    "BMP_value": {"BMP_type": [0, 1]}
+  },
+  "default_evaluator_config": {
+    "swat": {
+      "model_id": "swatplus_ftcreek",
+      "template_dir": "data/swatplus/ftcreek/TxtInOut",
+      "executable": "data/swatplus/ftcreek/TxtInOut/SWAT+.exe",
+      "work_root": "runs/swatplus_ftcreek",
+      "output_file": "hru_ls_aa.txt",
+      "metric": "sedyld",
+      "aggregation": "sum",
+      "timeout_seconds": 600,
+      "decision_binding": {
+        "file": "landuse.lum",
+        "key_column": "NAME",
+        "target_column": "CONS_PRAC",
+        "lu_mgt_names": [
+          "4513080",
+          "4513081",
+          "4513082",
+          "4513084",
+          "4513087",
+          "4513088",
+          "4515986",
+          "4515987",
+          "4515988",
+          "4515989"
+        ],
+        "actions": ["up_down_slope", "contour_1-2"]
+      }
+    }
+  },
+  "default_solver": {
+    "Type": "NSGA2 (Spatial)",
+    "GenerationsNum": 10,
+    "PopulationSize": 20,
+    "CrossoverRate": 0.8,
+    "MutateRate": 0.1
+  },
+  "payload_notes": [
+    "Use evaluator 'swat' for SWAT+ sediment-yield objectives.",
+    "The generic SWAT+ adapter materializes BMP choices by replacing landuse.lum CONS_PRAC values."
+  ]
+}

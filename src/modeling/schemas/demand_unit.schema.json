@@ -1,0 +1,61 @@
+{
+  "title": "DemandUnitArtifact",
+  "type": "object",
+  "required": ["stage", "demand_units"],
+  "properties": {
+    "stage": {"const": "demand_unit"},
+    "demand_units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "quantity", "metric", "criterion", "scope"],
+        "properties": {
+          "id": {"type": "string"},
+          "role": {"enum": ["objective", "constraint"]},
+          "user_expression": {"type": "string"},
+          "quantity": {
+            "type": "object",
+            "required": ["phenomenon", "variable", "source"],
+            "properties": {
+              "phenomenon": {"enum": ["sediment", "runoff", "nutrient", "cost", "landuse", "implementation", "custom"]},
+              "variable": {"enum": ["sediment_load", "sediment_intensity", "investment_cost", "custom"]},
+              "source": {"enum": ["raster", "timeseries", "cost_model", "rule", "custom"]},
+              "simulator_output": {"type": "string"}
+            }
+          },
+          "metric": {
+            "type": "object",
+            "properties": {
+              "spatial_aggregation": {"enum": ["sum", "mean", "weighted_mean", "max"]},
+              "temporal_aggregation": {"enum": ["window_total", "annualized"]},
+              "comparison": {"enum": ["raw_value", "reduction_rate"]},
+              "peak_reference": {"enum": ["none", "baseline_location", "scenario_peak"]},
+              "source": {"enum": ["raster", "timeseries", "cost_model", "rule", "custom"]},
+              "value": {"type": "string"}
+            }
+          },
+          "criterion": {
+            "type": "object",
+            "properties": {
+              "sense": {"enum": ["maximize", "minimize", "<=", ">=", "=="]},
+              "threshold": {},
+              "unit": {"type": "string"}
+            }
+          },
+          "scope": {
+            "type": "object",
+            "required": ["raw_spatial_text", "raw_temporal_text"],
+            "properties": {
+              "raw_spatial_text": {"type": "string"},
+              "raw_temporal_text": {"type": "string"},
+              "evaluation_domain_hint": {"type": "string"},
+              "action_domain_hint": {"type": "string"},
+              "simulation_domain_hint": {"type": "string"}
+            }
+          },
+          "uncertainties": {"type": "array"}
+        }
+      }
+    }
+  }
+}

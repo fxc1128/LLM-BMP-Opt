@@ -1,0 +1,102 @@
+{
+  "title": "OptimizationModelArtifact",
+  "type": "object",
+  "required": ["stage", "problem_type", "simulator", "decision_variables", "objectives", "optimizer"],
+  "properties": {
+    "stage": {"const": "optimization_model"},
+    "problem_type": {"type": "string"},
+    "simulator": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "simulation_domain_ref": {"type": "string"},
+        "time_window_ref": {"type": "string"}
+      }
+    },
+    "decision_variables": {
+      "type": "object",
+      "required": ["unit_type", "encoding"],
+      "properties": {
+        "unit_type": {"type": "string"},
+        "encoding": {"type": "string"},
+        "action_domain_ref": {"type": "string"},
+        "allowed_unit_ids": {"type": "array"}
+      }
+    },
+    "objectives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "demand_unit_id", "metric", "criterion"],
+        "properties": {
+          "id": {"type": "string"},
+          "demand_unit_id": {"type": "string"},
+          "evaluation_domain_ref": {"type": "string"},
+          "temporal_domain_ref": {"type": "string"},
+          "metric": {
+            "type": "object",
+            "required": ["spatial_aggregation", "temporal_aggregation", "comparison", "peak_reference", "source", "value"],
+            "properties": {
+              "target": {"type": "string"},
+              "spatial_aggregation": {"enum": ["sum", "mean", "weighted_mean", "max"]},
+              "temporal_aggregation": {"enum": ["window_total", "annualized"]},
+              "comparison": {"enum": ["raw_value", "reduction_rate"]},
+              "peak_reference": {"enum": ["none", "baseline_location", "scenario_peak"]},
+              "source": {"enum": ["raster", "timeseries", "cost_model", "rule", "custom"]},
+              "value": {"type": "string"}
+            }
+          },
+          "criterion": {
+            "type": "object",
+            "required": ["sense", "unit"],
+            "properties": {
+              "sense": {"enum": ["maximize", "minimize"]},
+              "unit": {"type": "string"},
+              "threshold": {}
+            }
+          }
+        }
+      }
+    },
+    "evaluation_binding": {
+      "type": "object",
+      "properties": {
+        "mode": {"enum": ["shared_window", "objective_specific"]},
+        "active_evaluation_domain_ref": {"type": "string"},
+        "active_temporal_domain_ref": {"type": "string"},
+        "objective_specific_domains_enabled": {"type": "boolean"},
+        "future_objective_domain_refs": {"type": "object"}
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "demand_unit_id", "metric", "criterion"],
+        "properties": {
+          "id": {"type": "string"},
+          "demand_unit_id": {"type": "string"},
+          "metric": {"type": "object"},
+          "criterion": {
+            "type": "object",
+            "required": ["sense"],
+            "properties": {
+              "sense": {"enum": ["<=", ">=", "==", "maximize", "minimize"]},
+              "threshold": {},
+              "unit": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "optimizer": {
+      "type": "object",
+      "properties": {
+        "name": {"enum": ["nsga2", "ga", "de", "random_search", "custom"]},
+        "parameters": {"type": "object"}
+      }
+    },
+    "reasoning": {"type": "string"}
+  }
+}

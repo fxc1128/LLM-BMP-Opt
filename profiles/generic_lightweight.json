@@ -1,0 +1,19 @@
+{
+  "profile_id": "generic_lightweight",
+  "display_name": "Generic lightweight cost demonstration",
+  "model_family": "lightweight",
+  "support_status": "executable",
+  "aliases": ["demo", "example", "lightweight"],
+  "supported_targets": ["implementation cost"],
+  "supported_units": ["candidate unit"],
+  "supported_measures": ["BMP type selection"],
+  "default_decision_variable": {
+    "spatial_discretization": "candidate unit",
+    "candidate_unit_count": 6,
+    "BMP_value": {"BMP_type": [0, 1, 2, 3]},
+    "zero_probability": 0.35
+  },
+  "default_evaluator_config": {"bmp_net_cost_model": {}},
+  "default_solver": {"PopulationSize": 12, "GenerationsNum": 4, "CrossoverRate": 0.8, "MutateRate": 0.1},
+  "payload_notes": ["This profile is a runnable software demonstration, not a watershed simulation."]
+}

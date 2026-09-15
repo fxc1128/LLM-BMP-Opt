@@ -1,0 +1,1169 @@
+{
+  "comprehensive_governance_catalog": {
+    "purpose": "Stage 1 流域治理需求目录：用于全面识别治理对象、过程、指标、候选措施、空间单元和情景，不将目录项自动当作用户已选需求。",
+    "governance_objects": {
+      "agriculture_and_slopes": {"issues": ["面蚀", "沟蚀", "泥沙", "TN/TP流失", "农药"], "measures": ["等高耕作", "保护性耕作", "免耕", "覆盖作物", "精准施肥", "缓冲带", "坡改梯", "地埂"]},
+      "forest_and_orchard": {"issues": ["低覆盖", "林下侵蚀", "低效林", "土壤退化"], "measures": ["封育", "禁牧", "生态种植", "补植", "低效林改造", "果园改造", "林草复合"]},
+      "riparian_and_gully": {"issues": ["岸坡侵蚀", "沟蚀", "泥沙输移", "河岸污染"], "measures": ["河岸缓冲带", "生态沟渠", "植草沟", "沟头防护", "沉砂池", "拦沙坝", "人工湿地", "河道修复"]},
+      "urban_stormwater": {"issues": ["不透水面径流", "内涝", "峰值流量", "初期雨水", "合流溢流"], "measures": ["生物滞留", "雨水花园", "透水铺装", "下凹绿地", "植草沟", "渗渠", "绿色屋顶", "调蓄池", "雨水回用"]},
+      "wetland_groundwater_and_disturbed_land": {"issues": ["富营养化", "栖息地退化", "地下水补给不足", "硝酸盐", "矿山/施工裸地侵蚀"], "measures": ["湿地恢复", "滨岸带恢复", "人工回灌", "源头减氮", "边坡绿化", "临时覆盖", "截排水"]}
+    },
+    "indicator_catalog": {"hydrology": ["径流体积", "峰值流量", "基流", "入渗", "调蓄量", "淹没深度"], "sediment": ["土壤流失", "泥沙负荷", "泥沙浓度", "泥沙削减率"], "water_quality": ["TN", "NO3-N", "NH3-N", "TP", "TSS", "COD", "BOD", "农药"], "ecology": ["植被覆盖", "碳汇", "栖息地", "生物多样性", "生态流量"], "social_economic": ["建设成本", "维护成本", "全寿命成本", "收益", "公平性", "风险"]},
+    "spatial_units": ["栅格", "坡位/SLPPOS", "地块", "HRU", "子流域", "子汇水区", "河段/断面", "设施/节点", "行政村/地籍单元"],
+    "scenario_catalog": ["历史典型年", "多年平均", "丰枯水年", "设计暴雨/重现期", "汛期或关键期", "现状与规划年", "土地利用变化", "气候变化", "不同预算", "分期实施"],
+    "constraint_catalog": ["总/年度预算", "实施面积", "政策红线", "永久基本农田", "饮用水源保护", "维护能力", "措施互斥", "上下游连通性", "达标阈值", "公平性"]
+  },
+  "spatial_optimization_kb": {
+    "meta_info": {
+      "version": "2.0",
+      "description": "空间优化问题建模知识库，集成通用的优化建模树(SOT)逻辑与流域治理专项领域知识。",
+      "purpose": "支持LLM从自然语言中提取结构化的数学模型参数，包括空间离散化、决策变量定义、目标函数映射及约束条件构建。"
+    },
+    "part_1_general_framework": {
+      "description": "用于识别问题的数学骨架。",
+      "sot_navigator": {
+        "task_domains": [
+          {
+            "id": "Watershed_BMP",
+            "name": "流域最佳管理措施优化",
+            "keywords": [
+              "水质",
+              "泥沙",
+              "面源污染",
+              "流域治理",
+              "水土保持"
+            ]
+          },
+          {
+            "id": "Land_Use_Opt",
+            "name": "土地利用结构优化",
+            "keywords": [
+              "景观格局",
+              "规划",
+              "用地调整",
+              "基本农田"
+            ]
+          },
+          {
+            "id": "Facility_Location",
+            "name": "设施选址优化",
+            "keywords": [
+              "覆盖范围",
+              "选址",
+              "建在哪",
+              "服务半径"
+            ]
+          }
+        ],
+        "constraint_typology": [
+          {
+            "type": "Resource_Limitation",
+            "logic_rule": "LHS <= RHS",
+            "semantic_tags": [
+              "预算",
+              "资金",
+              "总面积限制",
+              "上限",
+              "不够用",
+              "最多"
+            ],
+            "mathematical_form": "Sum(Cost_i * x_i) <= Total_Budget"
+          },
+          {
+            "type": "Demand_Satisfaction",
+            "logic_rule": "LHS >= RHS",
+            "semantic_tags": [
+              "达标",
+              "至少",
+              "削减目标",
+              "任务要求",
+              "底线"
+            ],
+            "mathematical_form": "Sum(Benefit_i * x_i) >= Target_Value"
+          },
+          {
+            "type": "Conservation_Logic",
+            "logic_rule": "LHS = RHS",
+            "semantic_tags": [
+              "必须选一个",
+              "唯一",
+              "守恒",
+              "全覆盖"
+            ],
+            "mathematical_form": "Sum(x_i_types) = 1 (每个单元单选)"
+          },
+          {
+            "type": "Spatial_Relation",
+            "logic_rule": "Conditional (If-Then / Either-Or)",
+            "semantic_tags": [
+              "邻接",
+              "上游影响下游",
+              "连片",
+              "互斥"
+            ],
+            "mathematical_form": "x_i + x_j <= 1 (互斥) 或 x_i <= x_j (依存)"
+          }
+        ]
+      },
+      "ontology_definitions": {
+        "decision_variable": {
+          "definition": "模型中可调控的自变量，通常对应具体的空间措施。",
+          "types": [
+            "Binary (0/1)",
+            "Integer",
+            "Continuous (0.0-1.0)"
+          ]
+        },
+        "objective_function": {
+          "definition": "优化的方向与量化指标。",
+          "senses": [
+            "min (最小化/削减)",
+            "max (最大化/提升)"
+          ]
+        }
+      }
+    },
+    "Watershed_BMP_knowledge": {
+      "description": "针对流域治理场景的具体参数库，包含详尽的语义标签以支持模糊匹配。",
+      "field_definitions": {
+        "purpose": "供 Expert1 理解6个字段的领域含义，以便精准解析用户需求并给出有针对性的反馈。",
+        "fields": {
+          "spatial_scope": {
+            "label": "治理区域",
+            "meaning": "本次优化针对哪个流域或地理范围，决定了模型输入数据的来源和空间边界。",
+            "valid_form": "用户提到的地名原文，不得翻译或截断。如'游乌镇小流域'、'某县XX沟流域'。",
+            "note": "Expert1 只记录用户原话，Expert2 负责标准化和匹配已知流域库。",
+            "question_hint": "请问治理的具体流域或区域范围是哪里？"
+          },
+          "time_span": {
+            "label": "治理时间跨度",
+            "meaning": "优化方案覆盖的时间段，影响模型模拟的年份序列和BMP效果积累周期。",
+            "valid_form": "起始年-终止年，如 '2013-2017'（5年）、'2020-2025'（6年）。",
+            "note": "时间跨度越长，TimeSchedule模式下的决策维度越多；短期（1-3年）通常用TypeSelection即可。",
+            "question_hint": "请问治理的时间范围是哪几年？（例如：2013年到2017年）"
+          },
+          "objectives": {
+            "label": "治理目标",
+            "meaning": "多目标优化希望同时优化的指标列表。典型场景是1个生态效益目标（最大化泥沙/污染削减）+ 1个经济目标（最小化总成本），形成二目标 Pareto 优化。",
+            "valid_form": "每个目标包含：优化方向（最大化/最小化）、指标名称（英文标准名）、用户表达。",
+            "note": "目标数量通常2-3个。多于3个目标会使Pareto前沿复杂化，不建议超过4个。成本目标建议排第一。",
+            "question_hint": "请问您希望优化哪些目标？例如：最大化泥沙削减量、最小化治理总成本？"
+          },
+          "discretization": {
+            "label": "空间离散化方案",
+            "meaning": "将流域空间划分成若干决策单元的方式。每个单元是决策变量的承载体——在该单元上选择实施哪种BMP（或不实施）。离散化方案决定了决策粒度、模型精度和方案的管理可操作性。",
+            "valid_form": "三选一：坡位单元（Slope_position）、地块（field）、水文响应单元（HRU）。",
+            "note": "选择原则：(1)坡位单元——最常用，与SEIMS模型天然耦合，适合坡面水土保持；(2)地块——适合以农田管理为主、需落地到具体地块的场景；(3)HRU——适合需要精细水质/径流物理过程模拟的场景。用户未说明时，优先推荐坡位单元。",
+            "question_hint": "请问采用哪种空间单元划分方式？常用的有坡位单元（按上/中/下坡）、地块（按农田地块）或水文单元（HRU）。不确定的话默认用坡位单元即可。"
+          },
+          "candidate_measures": {
+            "label": "候选治理措施与实施细节",
+            "meaning": "本次优化考虑哪些BMP类型，以及决策的精细程度（实施模式）。BMP类型是必须选项，实施模式决定了决策变量的形式和信息量。",
+            "sub_fields": {
+              "selected_measures": "从知识库7种BMP中选取，或自定义新措施（is_custom=true）。多种措施组合可以体现'综合治理'。",
+              "implementation_mode": "见 implementation_mode_guide。核心区别：TypeSelection只决定'选哪种BMP'，Area_Proportion还决定'实施多大面积比例'，Time_Schedule还决定'哪一年开始实施'。默认用TypeSelection。"
+            },
+            "question_hint": "请问希望考虑哪些治理措施？比如封山育林、种草、修梯田等。如果不确定，我可以根据您的目标推荐。实施细节方面，是只需要选类型（默认），还是需要确定实施面积比例或分年度安排？"
+          },
+          "constraints": {
+            "label": "约束条件",
+            "meaning": "对优化方案施加的硬约束，最常见的是总预算上限。Pareto优化方案中的每个解都必须满足所有约束。",
+            "valid_form": "预算约束：{type:'budget', value:数值(元)}。面积约束、覆盖率约束等可用is_custom:true标记。",
+            "note": "约束是可选字段，不填则表示无硬约束（仍可在目标函数中最小化成本）。填写时注意单位统一为元。",
+            "question_hint": "请问是否有预算或其他约束条件？例如：治理总预算不超过100万元。（可选，不填则无硬约束）"
+          }
+        }
+      },
+      "implementation_mode_guide": {
+        "purpose": "帮助 Expert1 正确识别用户意图对应的实施模式，以及帮助用户理解三种模式的区别。",
+        "modes": {
+          "Type_Selection": {
+            "label": "类型选择模式（默认）",
+            "decision": "在每个空间单元上，选择实施哪种BMP类型（或不实施）。",
+            "variable_type": "Binary，0/1",
+            "example": "坡位A → 封禁治理；坡位B → 生态林草；坡位C → 不实施",
+            "when_to_use": "大多数规划场景的默认选择。用户关注'哪里种什么'而非精确面积或时间。",
+            "trigger_keywords": [],
+            "note": "最简洁的决策形式，适合初步规划、快速评估不同措施组合。"
+          },
+          "Area_Proportion": {
+            "label": "面积比例模式",
+            "decision": "在每个空间单元上，不仅决定实施哪种BMP，还决定实施的面积比例（0~1连续变量）。",
+            "variable_type": "Continuous，[0.0, 1.0]，表示该单元内实施BMP的面积占比",
+            "example": "坡位A → 生态林草，面积比例0.7（即70%面积种植林草）",
+            "when_to_use": "用户关注精确的实施规模、覆盖率或按比例分配资源时使用。",
+            "trigger_keywords": [
+              "面积比例",
+              "覆盖率",
+              "多大面积",
+              "比例",
+              "强度",
+              "密度"
+            ],
+            "note": "决策自由度更高，但优化计算复杂度也更大。"
+          },
+          "Time_Schedule": {
+            "label": "时序安排模式",
+            "decision": "在每个空间单元上，不仅决定实施哪种BMP，还决定在哪一年开始实施（整数年份变量）。",
+            "variable_type": "Binary × Integer：先选类型，再决定实施年份",
+            "example": "坡位A → 封禁治理，从2014年开始；坡位B → 生态林草，从2016年开始",
+            "when_to_use": "用户有明确的多年规划周期，关注分期实施的时间安排和年度预算平衡。",
+            "trigger_keywords": [
+              "哪一年",
+              "分期",
+              "分阶段",
+              "时间安排",
+              "施工进度",
+              "第几年",
+              "年度计划"
+            ],
+            "note": "需要 time_span 字段同时填写，NSGA2(Spatio-Temporal)求解器对应此模式。"
+          }
+        }
+      },
+      "discretization": [
+        {
+          "type": "HRU",
+          "name": "水文响应单元",
+          "applicability": "基于土地利用、土壤和坡度的叠加单元，是SWAT模型计算物理过程的最小载体。需要精准模拟水质、泥沙、径流过程的任务。",
+          "detail_description": "HRU是SWAT模型的基本计算单元，由土地利用类型×土壤类型×坡度级别三因子叠加生成。每个HRU内部被假设为均质体，物理过程（径流、泥沙、养分迁移）在HRU层面计算。一个子流域通常包含若干个HRU。",
+          "best_for": "需要精细水质（TN/TP）或径流物理过程模拟的科研型规划；与SWAT模型深度集成的项目。",
+          "limitations": "单元数量多（一个小流域可能有数百个HRU），优化计算量大；单元边界不对应实际管理边界，落地实施困难。",
+          "bmp_compatibility": "适合面状BMP（生态林草、低效林改造、经济林果、坡改梯），不适合依赖地形位置关系的BMP（如植被缓冲带需要河岸邻近关系）。",
+          "semantic_tags": [
+            "精准",
+            "物理过程",
+            "水文单元",
+            "流域尺度",
+            "宏观",
+            "SWAT默认",
+            "SEMIS支持"
+          ]
+        },
+        {
+          "type": "field",
+          "name": "田块/地块单元",
+          "applicability": "土地利用的管理单元。归属清晰，在流域管理政策制定及执行上具有优势，是在农田、河道等很具体、精细尺度治理，更关注管理/实施便利度的优先选择",
+          "detail_description": "地块是土地利用/农田管理的基本单元，边界清晰（通常对应地块边界或承包地边界），可直接落实到农户或经营主体。每个地块通常对应单一土地利用类型，空间分辨率较高。",
+          "best_for": "农业面源污染治理、农田生态化改造；需要精确到地块的资金补贴、责任主体落地；政策执行和监督考核场景。",
+          "limitations": "地块数量可能极多，需要GIS数据支持；地块内部可能存在坡度变化，无法体现坡面上下游关系。",
+          "bmp_compatibility": "适合坡改梯、经济林果、生态林草（按地块实施），与田块尺度措施天然匹配。",
+          "semantic_tags": [
+            "农田",
+            "地块",
+            "田块",
+            "田里",
+            "承包地",
+            "精细化",
+            "SEMIS支持"
+          ]
+        },
+        {
+          "type": "Slope_position",
+          "name": "坡位单元",
+          "applicability": "坡面上的位置可以表达坡面上的地理过程及BMP之间的空间配置关系，是精细尺度下更符合自然过程的治理方案的优先选择",
+          "detail_description": "坡位（slope position）将坡面按地形位置分为脊部、上坡、中坡、下坡、坡谷等若干位置。坡位之间存在明确的上下游关系，上坡BMP的径流和泥沙会影响下坡，体现了坡面上自然过程的连续性。SEIMS模型对坡位单元有内置支持（SLPPOS离散化方案）。",
+          "best_for": "水土保持为主要目标的场景；需要体现BMP空间配置协同效应（如上坡封禁+中坡林草+下坡梯田）；与SEIMS模型集成的项目（推荐首选）。",
+          "limitations": "需要高质量DEM数据提取坡位；坡位单元不对应行政/权属边界，落地管理稍复杂。",
+          "bmp_compatibility": "与所有7种BMP均兼容，特别适合封禁治理、生态林草、谷坊/淤地坝的坡面配置优化。SEIMS模型对此有最完整支持。",
+          "semantic_tags": [
+            "上坡",
+            "坡面",
+            "子流域",
+            "SEMIS支持"
+          ]
+        }
+      ],
+      "decision_variable_selection_guideline": {
+        "instruction": "LLM在提取变量时，应先匹配措施(Measure)，再根据用户意图匹配模态(Mode)。",
+        "logic_flow": [
+          "1. 匹配措施: 根据用户文本中的语义标签确定 Code。",
+          "2. 默认选择: 如果用户未提及具体参数（宽度、密度、时间），默认使用 'Selection' (Binary) 模态。",
+          "3. 触发选择: 如果用户文本包含 'trigger_keywords' 中的词汇，切换到对应的 'Continuous' 或 'Integer' 模态。",
+          "4. 组合情况: 如果用户既要选址又要定时间，可定义多维变量 x[i, t]。"
+        ]
+      },
+      "measure_library": [
+        {
+          "name": "封禁治理 (Closing Measures)",
+          "code": 1,
+          "description": "依靠自然力量恢复植被，禁止人为干扰（如放牧、砍伐）。",
+          "pros": "生态效益高，长效机制好。",
+          "cons": "见效慢（需3-5年才有明显效果），短期成本效益低。",
+          "applicability_conditions": "适用于植被自然恢复潜力较好的远山、陡坡（>25度）、生态脆弱区。要求无耕地占用压力。",
+          "typical_cost_level": "低（主要是围栏建设和管护人员费用，约500-1500元/亩）",
+          "typical_effect": "中长期泥沙削减30-60%，植被盖度显著提升，但初期效果不明显。",
+          "semantic_tags": [
+            "封山育林",
+            "拉围栏",
+            "禁牧",
+            "自然恢复",
+            "不让人进",
+            "管护",
+            "封育"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策该单元是否实施封禁。"
+            },
+            {
+              "mode_id": "Temporal",
+              "variable_type": "Integer",
+              "domain_range": "{2025, 2026, 2027...}",
+              "rationale": "时序模式：决策在哪一年开始实施封禁。",
+              "trigger_keywords": [
+                "时间",
+                "年份",
+                "何时",
+                "分期",
+                "进度"
+              ]
+            }
+          ],
+          "constraint_logic": "通常成本最低，但见效慢，适用于远山/陡坡/生态脆弱区。",
+          "builtin_support": true
+        },
+        {
+          "name": "生态林草 (Ecological Plantations)",
+          "code": 2,
+          "description": "人工种植乔木、灌木或草本植物，以增加植被覆盖。",
+          "pros": "见效相对较快（2-3年起效），固土保水效果稳定。",
+          "cons": "需要选择适地树种，维护成本持续存在。",
+          "applicability_conditions": "适用于有一定土壤条件（土层>20cm）、降雨量适中（>400mm/年）的坡地。坡度宜<35度。",
+          "typical_cost_level": "中（造林成本约800-3000元/亩，含苗木、人工、后期管护）",
+          "typical_effect": "泥沙削减20-50%，植被盖度提升显著，同时有一定固碳效益。",
+          "semantic_tags": [
+            "种树",
+            "植被恢复",
+            "绿化",
+            "退耕还林",
+            "增加植被覆盖",
+            "造林",
+            "种草"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策该单元是否变为林草地。"
+            },
+            {
+              "mode_id": "Intensity",
+              "variable_type": "Continuous",
+              "domain_range": "[0.0, 1.0]",
+              "rationale": "强度模式：决策该单元内种植林草的面积比例或覆盖度。",
+              "trigger_keywords": [
+                "密度",
+                "比例",
+                "覆盖度",
+                "多少面积",
+                "强度"
+              ]
+            }
+          ],
+          "constraint_logic": "需考虑适地适树原则（降雨量、土壤厚度限制）。",
+          "builtin_support": true
+        },
+        {
+          "name": "低效林改造 (Stand Improvement)",
+          "code": 3,
+          "description": "对生长不良、功能退化的现有林分进行补植、更替或抚育。",
+          "pros": "利用现有林地资源，成本低于新造林。",
+          "cons": "仅适用于已有林地，不能在无林地上使用。",
+          "applicability_conditions": "仅适用于当前土地利用类型为’林地’且郁闭度或生长指标较低的单元（残次林、疏林地）。",
+          "typical_cost_level": "低-中（补植抚育约300-1500元/亩）",
+          "typical_effect": "林分质量提升，中期（5-10年）泥沙削减效果改善，生物多样性提升。",
+          "semantic_tags": [
+            "林分改造",
+            "补植",
+            "树种更替",
+            "抚育",
+            "森林质量提升",
+            "残次林改造"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策该单元是否进行改造。"
+            }
+          ],
+          "constraint_logic": "仅适用于当前土地利用类型为’林地’且郁闭度或生长指标较低的单元。",
+          "builtin_support": true
+        },
+        {
+          "name": "经济林果 (Economic Fruit Forests)",
+          "code": 4,
+          "description": "种植具有经济价值的果树或木本粮油作物，兼顾生态与经济。",
+          "pros": "农民收益显著，生态经济双赢，社区接受度高。",
+          "cons": "初期投入较高，需要市场销售渠道配套。",
+          "applicability_conditions": "适用于坡度<25度、土层较厚、交通便利的农业用地。需要稳定水源（灌溉条件）。",
+          "typical_cost_level": "中-高（建园成本约2000-8000元/亩，含苗木、整地、滴灌等）",
+          "typical_effect": "水土保持效果中等，农民增收效果显著；适合兼顾经济目标的治理方案。",
+          "semantic_tags": [
+            "果园",
+            "种苹果",
+            "种柑橘",
+            "经济作物",
+            "农民增收",
+            "产业生态化",
+            "经果林"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策该单元是否转为果园。"
+            },
+            {
+              "mode_id": "Area_Allocation",
+              "variable_type": "Continuous",
+              "domain_range": "[0, Max_Area_Ha]",
+              "rationale": "面积模式：决策种植的具体亩数。",
+              "trigger_keywords": [
+                "亩数",
+                "规模",
+                "产量",
+                "多大面积"
+              ]
+            }
+          ],
+          "constraint_logic": "受坡度限制（通常<25度）及交通便利度约束。",
+          "builtin_support": true
+        },
+        {
+          "name": "植被缓冲带 (Buffer Strips)",
+          "code": 5,
+          "description": "在河道、湖泊周边沿线设置的拦截过滤带。",
+          "pros": "不占主体耕地，拦截面源污染（TN/TP）效果好，投入产出比高。",
+          "cons": "需占用河岸边缘土地；效果依赖带宽，<5m效果有限。",
+          "applicability_conditions": "仅适用于河道、湖泊周边的邻水单元。带宽一般5-30m，坡度宜<15度。",
+          "typical_cost_level": "低-中（建植成本约300-1000元/m宽/百米长）",
+          "typical_effect": "TN削减15-40%，TP削减20-50%，泥沙削减20-45%；特别适合水质改善目标。",
+          "semantic_tags": [
+            "河岸林",
+            "拦截带",
+            "过滤带",
+            "河边种草",
+            "阻隔带",
+            "滨岸带"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策是否设置缓冲带。"
+            },
+            {
+              "mode_id": "Width_Design",
+              "variable_type": "Continuous",
+              "domain_range": "[0.0, 30.0]",
+              "unit": "meter",
+              "rationale": "参数模式：决策缓冲带的宽度（米）。",
+              "trigger_keywords": [
+                "宽度",
+                "多宽",
+                "距离",
+                "缓冲距离"
+              ]
+            }
+          ],
+          "constraint_logic": "必须基于河网矢量生成的邻近单元（Buffer Unit）。",
+          "builtin_support": true
+        },
+        {
+          "name": "谷坊/淤地坝 (Check Dams)",
+          "code": 6,
+          "description": "沟道工程措施，用于拦截泥沙、抬升沟床。",
+          "pros": "泥沙拦截效果最强，能快速见效；可提高沟道土地利用价值。",
+          "cons": "工程量大，单位成本最高；仅适用于沟道，不适用于坡面。",
+          "applicability_conditions": "仅适用于沟道/沟谷单元，需满足上下游坝系级配原则。坡降适中（3-15%）的沟道最适合。",
+          "typical_cost_level": "高（每座谷坊1-10万元，淤地坝数十万至数百万元）",
+          "typical_effect": "泥沙削减效果最强（单体削减40-80%），见效快（施工后即有效）；是泥沙削减目标的首选工程措施。",
+          "semantic_tags": [
+            "拦沙坝",
+            "打坝",
+            "沟道工程",
+            "拦截泥沙",
+            "淤地坝",
+            "小型水利"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策在该沟道节点是否建坝。"
+            },
+            {
+              "mode_id": "Capacity_Design",
+              "variable_type": "Integer",
+              "domain_range": "{1, 2, 3}",
+              "rationale": "规格模式：选择坝体的规模等级（小型、中型、大型）。",
+              "trigger_keywords": [
+                "规模",
+                "大小",
+                "坝高",
+                "库容"
+              ]
+            }
+          ],
+          "constraint_logic": "仅适用于沟道单元，且需满足上下游坝系级配原则。",
+          "builtin_support": true
+        },
+        {
+          "name": "坡改梯 (Terracing)",
+          "code": 7,
+          "description": "将坡耕地改造为水平梯田，减少径流冲刷。",
+          "pros": "固土保水效果显著，同时提高耕地生产力；农民接受度高。",
+          "cons": "工程量较大，施工周期长；坡度过大（>25度）时技术上不可行。",
+          "applicability_conditions": "适用于5-25度的坡耕地，土层厚度需>30cm。交通条件需允许机械进入。",
+          "typical_cost_level": "中-高（梯田建设约3000-8000元/亩，含土方工程和田间道路）",
+          "typical_effect": "坡面泥沙削减40-70%，同时增加耕地面积和产量；是坡耕地治理的核心措施。",
+          "semantic_tags": [
+            "梯田",
+            "修台地",
+            "平整土地",
+            "坡耕地改造",
+            "土方工程",
+            "保水保土"
+          ],
+          "modeling_modes": [
+            {
+              "mode_id": "Selection",
+              "variable_type": "Binary",
+              "domain_range": "{0, 1}",
+              "default": true,
+              "rationale": "基础模式：决策是否修筑梯田。"
+            },
+            {
+              "mode_id": "Scheduling",
+              "variable_type": "Integer",
+              "domain_range": "{1, 2, 3, 4, 5}",
+              "unit": "Year_Index",
+              "rationale": "时序模式：决策在第几年进行施工（平衡年度预算）。",
+              "trigger_keywords": [
+                "时间",
+                "哪一年",
+                "施工进度",
+                "分期投资",
+                "工期"
+              ]
+            }
+          ],
+          "constraint_logic": "适用于5-25度坡耕地，土层厚度需>30cm。",
+          "builtin_support": true
+        },
+        {
+          "name": "contour_1-2",
+          "code": 1,
+          "description": "SWAT+ conservation-practice option written to landuse.lum CONS_PRAC for FtCreek HRU BMP optimization.",
+          "applicability_conditions": "FtCreek SWAT+ profile swatplus_ftcreek; HRU management rows listed in decision_binding.lu_mgt_names.",
+          "typical_effect": "Verified reduction in hru_ls_aa.sedyld sum from 980.012 to 979.692 in smoke test.",
+          "builtin_support": true,
+          "modeling_modes": [
+            {
+              "mode_id": "Type_Selection"
+            }
+          ],
+          "semantic_tags": [
+            "SWAT+",
+            "HRU",
+            "contour",
+            "CONS_PRAC",
+            "sediment"
+          ]
+        }
+      ],
+      "optimization_objectives": [
+        {
+          "id": "水土保持（Sediment reduction）",
+          "sense": "max (Reduction) / min (Load)",
+          "semantic_tags": [
+            "水变清",
+            "水土保持",
+            "减少泥沙"
+          ],
+          "linked_models": [
+            "SEIMS"
+          ],
+          "indicators": [
+            "Sediment reduction rate"
+          ]
+        },
+        {
+          "id": "污染治理（Water_Quality_Improvement）",
+          "sense": "max (Reduction) / min (Load)",
+          "semantic_tags": [
+            "减少污染",
+            "降氮",
+            "降磷",
+            "治污",
+            "改善水质"
+          ],
+          "linked_models": [
+            "SEIMS"
+          ],
+          "indicators": [
+            "TN (Total Nitrogen) reduction rate",
+            "TP (Total Phosphorus) reduction rate"
+          ]
+        },
+        {
+          "id": "降低成本（Economic_Efficiency）",
+          "sense": "max (Profit) / min (Cost)",
+          "semantic_tags": [
+            "省钱",
+            "预算内",
+            "效益最大",
+            "农民增收",
+            "产值"
+          ],
+          "linked_models": [
+            "BMP_cost_model"
+          ],
+          "indicators": [
+            "Total Cost",
+            "Net Cost"
+          ]
+        },
+        {
+          "id": "碳汇固碳（Carbon_Sequestration）",
+          "name_en": "Carbon_Sequestration",
+          "sense": "max",
+          "semantic_tags": [
+            "碳汇",
+            "固碳",
+            "碳储量",
+            "碳封存",
+            "增加碳汇",
+            "碳汇储量",
+            "温室气体",
+            "净零",
+            "低碳",
+            "碳中和"
+          ],
+          "linked_models": [],
+          "builtin_support": false,
+          "evaluator_hint": "custom_carbon_eval",
+          "indicators": [
+            "carbon sequestration rate (t C/ha/yr)",
+            "total carbon stock (t C)"
+          ],
+          "note": "无内置评估模型，需用户提供自定义评估器"
+        },
+        {
+          "id": "生物多样性（Biodiversity_Index）",
+          "name_en": "Biodiversity_Index",
+          "sense": "max",
+          "semantic_tags": [
+            "生物多样性",
+            "物种多样性",
+            "Shannon指数",
+            "生境",
+            "栖息地",
+            "生物多样性指数",
+            "物种丰富度",
+            "生态完整性",
+            "动植物多样性"
+          ],
+          "linked_models": [],
+          "builtin_support": false,
+          "evaluator_hint": "custom_biodiv_eval",
+          "indicators": [
+            "Shannon diversity index",
+            "habitat suitability score"
+          ],
+          "note": "无内置评估模型，需用户提供自定义评估器"
+        },
+        {
+          "id": "洪峰削减（Flood_Peak_Reduction）",
+          "name_en": "Flood_Peak_Reduction",
+          "sense": "max",
+          "semantic_tags": [
+            "防洪",
+            "洪水",
+            "洪峰",
+            "径流削减",
+            "蓄水",
+            "调洪",
+            "减少洪涝",
+            "洪峰流量削减"
+          ],
+          "linked_models": [
+            "SEIMS"
+          ],
+          "builtin_support": true,
+          "evaluator_hint": "seims",
+          "indicators": [
+            "flood peak reduction rate",
+            "runoff retention rate"
+          ],
+          "note": "SEIMS模型支持，需配置相应模块"
+        },
+        {
+          "id": "生态系统服务（Ecosystem_Services）",
+          "name_en": "Ecosystem_Services",
+          "sense": "max",
+          "semantic_tags": [
+            "生态系统服务",
+            "生态价值",
+            "生态效益",
+            "综合生态效益",
+            "生态修复效益",
+            "自然资本"
+          ],
+          "linked_models": [],
+          "builtin_support": false,
+          "evaluator_hint": "custom_ecosystem_services_eval",
+          "indicators": [
+            "ecosystem service value (CNY/ha/yr)"
+          ],
+          "note": "综合性目标，需用户定义评估方法"
+        },
+        {
+          "id": "swatplus_ftcreek_hru_sediment",
+          "name": "SWAT+ FtCreek HRU sediment-yield minimization",
+          "linked_models": [
+            "swatplus_ftcreek"
+          ],
+          "indicators": [
+            "hru_ls_aa.sedyld sum"
+          ],
+          "semantic_tags": [
+            "SWAT+",
+            "FtCreek",
+            "HRU",
+            "sediment",
+            "contour_1-2",
+            "CONS_PRAC"
+          ],
+          "runtime_status": "verified_real_run_2026_06_22"
+        }
+      ],
+      "constraints": [
+        {
+          "template_id": "Budget_Constraint",
+          "type": "Resource_Limitation",
+          "description": "实施措施的总成本不能超过预算。",
+          "latex_formula": "∑_{i ∈ Units} ∑_{m ∈ Measures} (Cost_{i,m} × x_{i,m}) ≤ Total_Budget",
+          "required_params": [
+            "Unit_Cost",
+            "Total_Budget"
+          ]
+        },
+        {
+          "template_id": "Area_Constraint",
+          "type": "Demand_Satisfaction",
+          "description": "某种措施的实施面积必须达到一定标准。",
+          "latex_formula": "∑_{i ∈ Units} (Area_i × x_{i,m}) ≥ Target_Area",
+          "required_params": [
+            "Unit_Area",
+            "Target_Area"
+          ]
+        },
+        {
+          "template_id": "Unit_Exclusivity",
+          "type": "Conservation_Logic",
+          "description": "一个空间单元内只能选择一种主要治理模式（互斥）。",
+          "latex_formula": "∑_{i ∈ Units} (Area_i × x_{i,m}) ≥ Target_Area",
+          "required_params": []
+        }
+      ],
+      "known_regions": [
+        {
+          "name": "游乌镇流域",
+          "standard_id": "Youwuzhen",
+          "aliases": [
+            "游乌镇",
+            "乌镇流域",
+            "游乌镇小流域",
+            "游乌"
+          ],
+          "spatial_resolution": 30,
+          "model_dir": "D:/EGC/SEIMS-dev/data/youwuzhen/demo_youwuzhen30m_longterm_model",
+          "bin_dir": "D:/EGC/SEIMS-dev/build/bin",
+          "hostname": "127.0.0.1",
+          "port": "27017"
+        }
+      ],
+      "disambiguation_rules": [
+        {
+          "ambiguous_term": "种草",
+          "rule": "默认匹配生态林草(code=2)；若用户同时提到'河边/河岸/岸边/水边'，则匹配植被缓冲带(code=5)",
+          "examples": {
+            "种草": "生态林草(code=2)",
+            "河边种草": "植被缓冲带(code=5)",
+            "坡面种草": "生态林草(code=2)"
+          }
+        },
+        {
+          "ambiguous_term": "造林",
+          "rule": "默认匹配生态林草(code=2)；若用户同时提到'残次林/改造/更替/补植'，则匹配低效林改造(code=3)",
+          "examples": {
+            "造林": "生态林草(code=2)",
+            "残次林改造": "低效林改造(code=3)"
+          }
+        }
+      ],
+      "canonical_supported_bmp_set_policy": {
+        "phrases": [
+          "???????",
+          "??????",
+          "????BMP",
+          "four supported BMPs",
+          "four types of support measures"
+        ],
+        "meaning": "Expand to all four supported Youwuzhen BMPs; do not classify as custom and do not leave candidate_measures empty.",
+        "selected_measures": [
+          {
+            "name": "????",
+            "name_en": "Closing_Measures",
+            "code": 1,
+            "is_custom": false
+          },
+          {
+            "name": "????",
+            "name_en": "Ecological_Plantations",
+            "code": 2,
+            "is_custom": false
+          },
+          {
+            "name": "?????",
+            "name_en": "Stand_Improvement",
+            "code": 3,
+            "is_custom": false
+          },
+          {
+            "name": "????",
+            "name_en": "Economic_Fruit_Forests",
+            "code": 4,
+            "is_custom": false
+          }
+        ]
+      },
+      "e1_semantic_alias_policy": {
+        "purpose": "Guide Expert1 to map natural-language expressions into E1 slots through the chain: expression -> E1 slot -> canonical value -> confidence -> ask-or-not.",
+        "extraction_chain": [
+          "1. Locate the exact user expression or phrase.",
+          "2. Match it to one E1 slot: spatial_scope, time_span, objectives, discretization, candidate_measures, or constraints.",
+          "3. Normalize to the canonical value required by the E1 template.",
+          "4. Assign confidence: high for explicit aliases and values, medium for domain paraphrases, low for vague wording.",
+          "5. Ask a follow-up only when required evidence is missing or confidence is low; do not ask again for high-confidence extracted fields."
+        ],
+        "status_policy": {
+          "high_confidence": "Set status to FILLED; if the same user turn contains a global confirmation cue such as confirm, run, go, start modeling, or 开始建模, it may become CONFIRMED.",
+          "medium_confidence": "Set status to FILLED and preserve user_expression for later confirmation.",
+          "low_confidence": "Do not invent missing required values. Leave the slot EMPTY or use a custom/gap marker only when the user clearly requests an unsupported concept.",
+          "optional_constraints": "constraints is optional. Absence of a budget or hard limit must not block E1 completion."
+        },
+        "field_aliases": {
+          "objectives.cost_objective": {
+            "slot": "objectives",
+            "canonical_value": {
+              "name": "Net_cost",
+              "display": "BMP net cost",
+              "direction": "min",
+              "indicator": "BMP net cost",
+              "is_custom": false
+            },
+            "zh_aliases": [
+              "成本越低越好",
+              "少花钱",
+              "花费尽量少",
+              "治理费用越低越好",
+              "控制投入",
+              "经济上划算",
+              "不要太贵",
+              "节省投资",
+              "总投入最小",
+              "净成本最小",
+              "降低净成本"
+            ],
+            "en_aliases": [
+              "minimize cost",
+              "keep cost low",
+              "reduce treatment cost",
+              "low-cost plan",
+              "cost-effective",
+              "minimize investment",
+              "minimize BMP cost",
+              "minimize net cost",
+              "as cheap as possible",
+              "lower treatment expenses"
+            ],
+            "mixed_aliases": [
+              "cost 尽量低",
+              "BMP cost 最小",
+              "treatment cost 不要太高",
+              "budget friendly",
+              "经济 cost 控制",
+              "费用 low 一点"
+            ],
+            "required_evidence": [
+              "A cost/expense/investment phrase",
+              "An optimization preference such as minimize, lower, keep low, 越低越好, 尽量少, or 最小"
+            ],
+            "ask_if_missing": "If the user mentions only budget without an optimization preference, treat it as a constraint, not a cost objective.",
+            "negative_cues": [
+              "预算不超过",
+              "budget cap",
+              "within budget",
+              "<=",
+              "not exceed"
+            ]
+          },
+          "constraints.budget": {
+            "slot": "constraints",
+            "canonical_value": {
+              "type": "budget",
+              "sense": "<=",
+              "unit": "CNY",
+              "is_custom": false
+            },
+            "zh_aliases": [
+              "预算不超过",
+              "总预算控制在",
+              "最多花",
+              "资金上限",
+              "投入上限",
+              "不能超过",
+              "不高于",
+              "封顶",
+              "控制在以内",
+              "预算为"
+            ],
+            "en_aliases": [
+              "budget no more than",
+              "within a budget of",
+              "budget cap",
+              "under 1 million CNY",
+              "not exceed",
+              "limited to",
+              "less than or equal to",
+              "within 1M RMB"
+            ],
+            "mixed_aliases": [
+              "budget <= 1,000,000 CNY",
+              "预算 cap 100万",
+              "within 100万 RMB",
+              "budget 不超过 100万",
+              "cost <= 1M CNY"
+            ],
+            "value_patterns": [
+              "100万",
+              "一百万",
+              "1 million",
+              "1,000,000",
+              "100w",
+              "1.0M",
+              "1M RMB",
+              "1M CNY"
+            ],
+            "normalization_rules": [
+              "100万, 一百万, 1 million, 1,000,000, 100w, and 1M all normalize to 1000000.",
+              "When a hard upper-bound cue and numeric amount are both present, create a budget constraint even if a cost objective also exists."
+            ],
+            "ask_if_missing": "If the user says there is a budget limit but gives no amount, ask for the amount. If no budget is mentioned, do not ask unless other required slots are already complete."
+          },
+          "objectives.sediment": {
+            "slot": "objectives",
+            "canonical_value": {
+              "name": "Sediment_reduction",
+              "display": "sediment reduction",
+              "direction": "max",
+              "indicator": "sediment reduction rate",
+              "is_custom": false
+            },
+            "zh_aliases": [
+              "减少泥沙",
+              "泥沙削减",
+              "水土流失少一点",
+              "水变清",
+              "浑水少一点",
+              "控制泥沙",
+              "拦泥",
+              "降低产沙"
+            ],
+            "en_aliases": [
+              "sediment reduction",
+              "reduce sediment",
+              "lower sediment yield",
+              "control erosion",
+              "less soil loss",
+              "make water clearer"
+            ],
+            "vague_cues": [
+              "水质变好",
+              "治理效果好",
+              "生态效果更好"
+            ],
+            "ask_if_missing": "If only vague water-quality language is present and no sediment/erosion cue exists, ask which indicator should be optimized."
+          },
+          "objectives.nitrate_custom": {
+            "slot": "objectives",
+            "canonical_value": {
+              "name": "nitrate",
+              "display": "nitrate reduction",
+              "direction": "max",
+              "indicator": "nitrate reduction rate",
+              "is_custom": true
+            },
+            "zh_aliases": [
+              "硝酸盐削减",
+              "降低硝酸盐",
+              "硝态氮降低"
+            ],
+            "en_aliases": [
+              "nitrate reduction",
+              "reduce nitrate",
+              "lower nitrate load",
+              "maximize nitrate reduction"
+            ],
+            "gap_policy": "If the current model/evaluator binding does not support nitrate for the requested watershed, preserve the objective as custom/gap instead of replacing it with sediment."
+          },
+          "temporal_window": {
+            "slot": "objectives.temporal_scope",
+            "zh_aliases": [
+              "前期",
+              "后期",
+              "前几年",
+              "后几年",
+              "前半段",
+              "后半段",
+              "第一阶段",
+              "第二阶段"
+            ],
+            "en_aliases": [
+              "early stage",
+              "late stage",
+              "first half",
+              "second half",
+              "early window",
+              "late window",
+              "phase 1",
+              "phase 2"
+            ],
+            "normalization_rules": [
+              "Explicit year ranges attached to objectives must be preserved on the objective as temporal_scope.",
+              "Do not collapse objective-specific windows into only the global time_span."
+            ],
+            "ask_if_missing": "If the user says early/late stage but gives no years and the global time_span cannot be split unambiguously, ask for the stage years."
+          },
+          "subbasin_scope": {
+            "slot": "objectives.spatial_scope",
+            "zh_aliases": [
+              "一号子流域",
+              "第1子流域",
+              "1号子流域",
+              "1#子流域",
+              "子流域1",
+              "上游子流域",
+              "下游子流域"
+            ],
+            "en_aliases": [
+              "subbasin 1",
+              "sub-basin 1",
+              "No.1 subbasin",
+              "subbasin #1",
+              "upper subbasin",
+              "lower subbasin"
+            ],
+            "normalization_rules": [
+              "If a spatial phrase modifies a specific objective, preserve it on that objective.",
+              "Do not overwrite objective-level spatial_scope with the global watershed scope."
+            ]
+          },
+          "discretization": {
+            "slot": "discretization",
+            "canonical_values": {
+              "SLPPOS": [
+                "坡位",
+                "坡位单元",
+                "按坡位",
+                "slope position",
+                "SLPPOS",
+                "slope-position units"
+              ],
+              "HRU": [
+                "水文响应单元",
+                "HRU",
+                "hydrologic response unit",
+                "SWAT HRU"
+              ],
+              "field": [
+                "地块",
+                "农田地块",
+                "field",
+                "parcel",
+                "plot"
+              ]
+            }
+          },
+          "candidate_measures.bmp_aliases": [
+            {
+              "code": 1,
+              "canonical_name": "Closing_Measures",
+              "zh_aliases": ["封禁治理", "封山育林", "封育", "封禁", "禁牧封育"],
+              "en_aliases": ["closure", "enclosure", "forest closure", "grazing exclusion"]
+            },
+            {
+              "code": 2,
+              "canonical_name": "Ecological_Plantations",
+              "zh_aliases": ["生态林草", "生态林", "种草", "林草措施", "生态种植", "造林"],
+              "en_aliases": ["ecological plantation", "grass planting", "eco-forest", "afforestation"]
+            },
+            {
+              "code": 3,
+              "canonical_name": "Stand_Improvement",
+              "zh_aliases": ["低效林改造", "低效林", "残次林改造", "林分改造", "补植改造"],
+              "en_aliases": ["stand improvement", "low-efficiency forest improvement", "forest stand renovation"]
+            },
+            {
+              "code": 4,
+              "canonical_name": "Economic_Fruit_Forests",
+              "zh_aliases": ["经济林果", "经济林", "果园", "果树", "经果林"],
+              "en_aliases": ["economic fruit forest", "orchard", "fruit forest"],
+              "negative_aliases": ["低效林改造", "低效林", "stand improvement"]
+            }
+          ]
+        },
+        "ask_policy": {
+          "required_slots": [
+            "spatial_scope",
+            "objectives",
+            "candidate_measures",
+            "discretization",
+            "time_span"
+          ],
+          "optional_slots": [
+            "constraints"
+          ],
+          "do_not_ask_when": [
+            "The slot has high-confidence evidence in the current or previous turns.",
+            "The missing slot is optional and the user did not mention it.",
+            "The user explicitly asks to proceed with available information and the remaining missing slot is optional."
+          ],
+          "ask_when": [
+            "A required slot has no evidence.",
+            "A phrase is too vague to choose between two canonical slots.",
+            "A hard constraint is mentioned without the numeric threshold needed to instantiate it."
+          ]
+        }
+      }
+    }
+  }
+}

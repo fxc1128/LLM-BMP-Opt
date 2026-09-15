@@ -1,0 +1,20 @@
+{
+  "title": "ExecutablePayloadArtifact",
+  "type": "object",
+  "required": ["stage", "agent_payload"],
+  "properties": {
+    "stage": {"const": "executable_payload"},
+    "agent_payload": {
+      "type": "object",
+      "required": ["optimization_problem", "evaluator", "solver"],
+      "properties": {
+        "execution_mode": {"enum": ["cached_spatiotemporal_optimizer", "runtime_registry"]},
+        "optimization_problem": {"type": "object"},
+        "evaluator": {"type": "object"},
+        "solver": {"type": "object"},
+        "action_domain": {"type": "object"}
+      }
+    },
+    "reasoning": {"type": "string"}
+  }
+}

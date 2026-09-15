@@ -1,0 +1,13 @@
+{
+  "title": "RuntimeResultArtifact",
+  "type": "object",
+  "required": ["stage", "status"],
+  "properties": {
+    "stage": {"const": "runtime_result"},
+    "status": {"enum": ["completed", "failed", "needs_revision", "not_run"]},
+    "best_solution": {"type": "object"},
+    "metrics": {"type": "object"},
+    "errors": {"type": "array"},
+    "revision_target": {"type": "string"}
+  }
+}

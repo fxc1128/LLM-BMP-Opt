@@ -1,0 +1,102 @@
+{
+  "code_generation_kb": {
+    "purpose": "Stage 3 唯一代码知识库。按 Stage 2 已选 profile 精确保留模型、研究区、空间单元、BMP、评价器和参数；不匹配时生成 placeholder 和用户适配说明。",
+    "component_selection_order": ["profile_id", "研究区与模型数据", "spatial_discretization", "BMP_value.BMP_type", "evaluator与metric", "solver", "代码文件"],
+    "model_region_unit_measure_catalog": {
+      "youwuzhen_seims_sediment": {"model": "SEIMS", "region": "Youwuzhen", "units": ["SLPPOS", "slope_position_unit", "watershed", "subbasin"], "measures": ["1 closure management", "2 ecological planting", "3 low-quality forest improvement", "4 orchard improvement"], "evaluators": ["seims", "spatiotemporal_seims", "bmp_net_cost_model"]},
+      "ftcreek_swatplus_sediment": {"model": "SWAT+", "region": "Fountain Creek", "units": ["HRU"], "measures": ["0 up_down_slope", "1 contour_1-2"], "binding": "landuse.lum: CONS_PRAC", "evaluators": ["swat"]},
+      "urban_bioretention_epa_swmm": {"model": "EPA SWMM", "region": "public bioretention example", "units": ["subcatchment"], "measures": ["0 no_lid", "1 bioretention"], "evaluators": ["epa_swmm"], "metrics": ["runoff_volume", "peak_flow", "total_cost"]},
+      "urban_demo_swmm_lid": {"model": "lightweight SWMM-LID", "region": "S1/S2/S3 urban demo", "units": ["subcatchment", "subbasin"], "measures": ["0 none", "1 bioretention", "2 permeable_pavement", "3 infiltration_trench", "4 vegetative_swale"], "evaluators": ["swmm_lid"], "metrics": ["runoff_volume", "peak_flow", "tss_load", "total_cost"]},
+      "generic_lightweight": {"model": "software demonstration", "region": "none", "units": ["candidate unit"], "measures": ["0 none", "1-3 BMP type"], "evaluators": ["bmp_net_cost_model", "lightweight_cost"]}
+    },
+    "files": {"agent_payload.py": "保持 Stage 2 载荷", "main.py": "调用 runtime.factory.OptimizationFactory", "evaluators.py": "仅用户模型/placeholder适配时生成", "README.md": "placeholder、轻量模型或外部依赖时必须生成", "requirements.txt": "只含Python依赖"}
+  },
+  "知识库说明": "Stage 3 代码生成只可使用本目录中登记的组件。路径均相对于下载代码包根目录；不得使用开发机绝对路径或把占位结果表述为真实模拟结果。",
+  "Stage2到Stage3绑定规则": {
+    "profile_id": "Stage 2 的 agent_payload.profile_id 必须原样传入 Stage 3；它决定研究区、模型、可用评价器、决策单元和默认求解器。",
+    "objectives": "每一个 optimization_problem.objectives 条目必须有 name、type（min|max）、indicator 和 evaluator；evaluator 必须来自已注册评价器或 placeholder_metric。",
+    "decision_variable": "必须保留 Stage 2 的 spatial_discretization 与 BMP_value.BMP_type；候选单元数量、BMP 编码和措施含义不得被代码生成阶段改写。",
+    "evaluator_config": "agent_payload.evaluator[评价器键] 存放模型路径、输出指标、决策绑定和用户模型配置。目标级参数可放在 objective.evaluator_config 中，由 OptimizationFactory 合并。",
+    "solver": "默认使用 NSGA-II；PopulationSize、GenerationsNum、CrossoverRate、MutateRate 从 Stage 2 载荷读取。生成代码不得静默缩小种群或代数。"
+  },
+  "已注册研究区模型组件": [
+    {
+      "profile_id": "youwuzhen_seims_sediment",
+      "研究区和模型": "Youwuzhen 流域，SEIMS；运行所需模型目录、SEIMS 可执行文件和 MongoDB 参数由 profile 的 default_evaluator_config.seims 指定。",
+      "适用场景": "以 SLPPOS、坡位单元、子流域或全流域为决策尺度，优化泥沙负荷/泥沙削减率与 BMP 净成本。",
+      "可用评价器": ["seims", "spatiotemporal_seims", "bmp_net_cost_model"],
+      "可用指标": ["sediment", "sediment_load", "sediment_reduction_rate", "net_cost"],
+      "措施和变量": "BMP-1 封禁管理、BMP-2 生态种植、BMP-3 低质林改造、BMP-4 果园改造；变量为每个空间单元的 BMP 类型编码。",
+      "Stage2绑定": "目标中的 evaluator 使用 seims 或 spatiotemporal_seims（泥沙）和 bmp_net_cost_model（成本）；空间离散化必须匹配 profile.supported_units。",
+      "数据位置": "data/seims/youwuzhen/；示例配置见 profiles/youwuzhen_seims_sediment.example.json。"
+    },
+    {
+      "profile_id": "ftcreek_swatplus_sediment",
+      "研究区和模型": "Fountain Creek（FtCreek），SWAT+ TxtInOut。",
+      "适用场景": "以 HRU 为决策单元，比较顺坡耕作与等高耕作对 HRU 泥沙产量的影响。",
+      "可用评价器": ["swat", "swatplus"],
+      "可用指标": ["sediment", "sediment_yield", "hru_sediment_yield"],
+      "措施和变量": "BMP-8 up_down_slope、BMP-9 contour_1-2；适配器把选择写入 landuse.lum 的 CONS_PRAC 字段。",
+      "Stage2绑定": "profile_id=ftcreek_swatplus_sediment；目标 evaluator=swat；evaluator.swat 必须含 template_dir、executable、work_root、output_file=hru_ls_aa.txt、metric=sedyld 和 decision_binding。",
+      "数据位置": "data/swatplus/ftcreek/TxtInOut/。"
+    },
+    {
+      "profile_id": "urban_bioretention_epa_swmm",
+      "研究区和模型": "公开 EPA SWMM 生物滞留示例，使用 bundled runswmm.exe 调用真实 EPA SWMM 引擎。",
+      "适用场景": "单个子汇水区的生物滞留启用/关闭决策，评价事件总径流量、峰值流量和建设成本。",
+      "可用评价器": ["epa_swmm"],
+      "可用指标": ["runoff_volume", "peak_flow", "total_cost"],
+      "措施和变量": "0=no_lid，1=bioretention；一个子汇水区、一个离散决策变量。",
+      "Stage2绑定": "profile_id=urban_bioretention_epa_swmm；目标 evaluator=epa_swmm；evaluator.epa_swmm 需要 model_path、executable、work_root、metric、lid_unit_cost、lid_area_m2。",
+      "数据位置": "data/swmm/bioretention/bioretention.inp；引擎为 external/swmm/runtime/runswmm.exe。"
+    },
+    {
+      "profile_id": "urban_demo_swmm_lid",
+      "研究区和模型": "三子汇水区的轻量 SWMM-LID 演示模型，不是 EPA SWMM 动力波水力计算。",
+      "适用场景": "需要可快速复现实验流程时，以子汇水区选择多类 LID 并比较事件径流、峰流、TSS 和成本。",
+      "可用评价器": ["swmm_lid"],
+      "可用指标": ["runoff_volume", "peak_flow", "tss_load", "total_cost"],
+      "措施和变量": "none、bioretention、permeable_pavement、infiltration_trench、vegetative_swale；每个 S1/S2/S3 子汇水区一个 BMP 类型。",
+      "Stage2绑定": "profile_id=urban_demo_swmm_lid；目标 evaluator=swmm_lid；evaluator.swmm_lid 必须包含 model_path、metric、decision_binding.subcatchments 和 actions。",
+      "数据位置": "data/swmm/urban_lid/model/urban_lid_demo.inp。"
+    },
+    {
+      "profile_id": "generic_lightweight",
+      "研究区和模型": "无真实流域模型的通用软件演示。",
+      "适用场景": "仅用于验证 payload、优化器与下载包是否能运行；不可用于水文、水质或管理效益结论。",
+      "可用评价器": ["bmp_net_cost_model", "lightweight_cost"],
+      "可用指标": ["implementation_cost"],
+      "措施和变量": "候选单元上的离散 BMP 类型。",
+      "Stage2绑定": "profile_id=generic_lightweight；须在用户报告中明确“软件演示，非流域模拟”。"
+    }
+  ],
+  "优化器和约束组件": {
+    "NSGA2 (Spatial)": "默认多目标离散空间优化器；通过 UnifiedSolver 执行。要求 PopulationSize >= 2，CrossoverRate 和 MutateRate 在 [0,1]。",
+    "可用约束": ["结构化预算约束 Budget_limitation", "函数约束 func_constraint", "预评价约束 ConstraintMode.PRE_EVALUATION"],
+    "结果边界": "真实模型评价器返回模型执行结果；placeholder_metric 和 generic_lightweight 只用于流程验证，结果不得命名为模拟结果、预测结果或 Pareto 最优管理方案。"
+  },
+  "指标与评价器映射": {
+    "泥沙负荷或削减率": {"优先": ["seims", "spatiotemporal_seims", "swat"], "不支持时": "placeholder_metric，需声明单位、合理范围、缺失原因和待接入模型。"},
+    "径流体积或峰值流量": {"优先": ["epa_swmm", "swmm_lid"], "不支持时": "placeholder_metric，需声明单位、合理范围、缺失原因和待接入模型。"},
+    "TSS负荷": {"优先": ["swmm_lid"], "不支持时": "placeholder_metric，需声明单位、合理范围、缺失原因和待接入模型。"},
+    "BMP成本": {"优先": ["bmp_net_cost_model", "lightweight_cost"], "不支持时": "placeholder_metric；不得以随机占位值作为经济结论。"}
+  },
+  "不支持组件的placeholder接口": {
+    "何时使用": "Stage 2 无匹配 profile、用户模型尚未提供、模型可执行文件/输入数据缺失，或所需指标未被当前评价器支持时。",
+    "强制标记": "agent_payload.support_status 必须为 unsupported 或 requires_local_paths；每个 placeholder 目标必须设置 placeholder=true、reason、unit、value_range、adapter_todo，并在 README.md 首段写明非科学模拟。",
+    "评价器键": "placeholder_metric（别名 placeholder、custom_needed）。",
+    "最小配置": {
+      "objective": {"name": "目标名称", "type": "min 或 max", "indicator": "指标中文名", "evaluator": "placeholder_metric"},
+      "evaluator.placeholder_metric": {"objective_name": "目标名称", "placeholder": true, "reason": "缺少的模型、数据或接口", "unit": "原始单位", "value_range": [0, 1], "mode": "semantic_auto", "adapter_todo": "将由用户实现的适配器名称"}
+    },
+    "行为": "PlaceholderEvaluator 根据目标名称和决策向量生成可复现的有界数值，用于验证代码链路；它不读取外部模型，不代表物理过程，也不允许用于模型比较、论文图表或管理建议。",
+    "替换路径": "用户应实现 AbstractEvaluator.evaluate(individual, context)->float，在生成包 main.py 中调用 EvaluatorRegistry.register('my_model_metric', MyEvaluator)，然后将 objective.evaluator 和 evaluator 配置改为该键。详细步骤见 docs/USER_MODEL_ADAPTATION_GUIDE_zh-CN.md。"
+  },
+  "代码包固定结构": {
+    "agent_payload.py": "LLM 生成的 Stage 2 载荷常量。",
+    "main.py": "LLM 生成的入口；从 runtime.factory 导入 OptimizationFactory。",
+    "evaluators.py": "可选的用户自定义模型适配器文件。",
+    "requirements.txt": "Python 依赖；外部模型可执行文件不可写成 pip 依赖。",
+    "runtime/": "随包复制的公共执行库；用户可扩展，但不应把特定研究区数据写入其中。"
+  }
+}

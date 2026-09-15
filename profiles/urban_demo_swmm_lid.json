@@ -1,0 +1,41 @@
+{
+  "profile_id": "urban_demo_swmm_lid",
+  "display_name": "Urban demo SWMM LID optimization",
+  "model_family": "swmm_lid",
+  "support_status": "executable",
+  "aliases": ["urban demo", "UrbanDemo", "SWMM LID demo"],
+  "supported_targets": ["runoff_volume", "peak_flow", "tss_load", "total_cost"],
+  "supported_units": ["subcatchment", "subbasin"],
+  "supported_measures": [
+    {"code": 0, "name": "none", "label": "no LID"},
+    {"code": 1, "name": "bioretention", "label": "bioretention"},
+    {"code": 2, "name": "permeable_pavement", "label": "permeable pavement"},
+    {"code": 3, "name": "infiltration_trench", "label": "infiltration trench"},
+    {"code": 4, "name": "vegetative_swale", "label": "vegetative swale"}
+  ],
+  "default_decision_variable": {
+    "spatial_discretization": "subcatchment",
+    "BMP_value": {"BMP_type": [0, 1, 2, 3, 4]}
+  },
+  "default_evaluator_config": {
+    "swmm_lid": {
+      "model_id": "swmm_lid_urban_demo",
+      "model_path": "data/swmm/urban_lid/model/urban_lid_demo.inp",
+      "metric": "runoff_volume",
+      "decision_binding": {
+        "subcatchments": ["S1", "S2", "S3"],
+        "actions": ["none", "bioretention", "permeable_pavement", "infiltration_trench", "vegetative_swale"]
+      }
+    }
+  },
+  "default_solver": {
+    "Type": "NSGA2 (Spatial)",
+    "GenerationsNum": 10,
+    "PopulationSize": 20,
+    "CrossoverRate": 0.8,
+    "MutateRate": 0.1
+  },
+  "payload_notes": [
+    "Use evaluator 'swmm_lid'. Each objective should set the target metric in objective.name."
+  ]
+}

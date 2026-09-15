@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+generated_code/
+runs/
+logs/
+reports/
+data/
+external/
+bc_sncb.txt

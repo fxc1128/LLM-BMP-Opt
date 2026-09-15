@@ -1,0 +1,582 @@
+{
+  "requirement_model_binding_catalog": {
+    "purpose": "Stage 2 需求到模型、数据和参数的绑定目录。依次匹配研究区、模型、空间单元、措施、指标、评价器和运行状态；目录没有对应项时保留需求并标为待适配。",
+    "demand_to_model": [
+      {"demand": "泥沙/侵蚀", "outputs": ["泥沙负荷或产量", "基线-情景削减率"], "data_parameters": ["DEM", "土地利用", "土壤", "气象", "BMP参数", "时段"], "units": ["SLPPOS", "HRU", "地块", "子流域"], "registered": ["youwuzhen_seims_sediment", "ftcreek_swatplus_sediment"]},
+      {"demand": "TN/TP/硝态氮等营养盐", "outputs": ["负荷", "浓度", "削减率"], "data_parameters": ["施肥时序", "作物", "土壤化学", "气象", "监测数据"], "units": ["HRU", "地块", "河段", "子流域"], "registered": [], "fallback": "placeholder_metric 与用户水质模型适配器"},
+      {"demand": "城市径流/洪峰/内涝", "outputs": ["径流体积", "峰值流量", "淹没/溢流"], "data_parameters": ["子汇水区", "降雨", "不透水率", "管网", "LID参数"], "units": ["子汇水区", "设施", "节点"], "registered": ["urban_bioretention_epa_swmm", "urban_demo_swmm_lid"]},
+      {"demand": "TSS和城市污染", "outputs": ["TSS负荷", "浓度", "截留率"], "data_parameters": ["冲刷参数", "降雨", "土地利用", "LID去除参数"], "units": ["子汇水区", "设施", "节点"], "registered": ["urban_demo_swmm_lid（轻量演示）"]},
+      {"demand": "成本和经济性", "outputs": ["建设成本", "维护成本", "净现值"], "data_parameters": ["BMP单价", "面积/尺寸", "寿命", "折现率"], "units": ["所有空间单元"], "registered": ["bmp_net_cost_model", "lightweight_cost", "epa_swmm.total_cost"]},
+      {"demand": "生态服务、碳汇、生物多样性、地下水", "outputs": ["碳储量", "生态指数", "补给量", "水位"], "data_parameters": ["遥感/调查", "碳密度", "含水层参数", "监测"], "units": ["栅格", "地块", "河段", "管理井"], "registered": [], "fallback": "placeholder_metric 与用户适配器"}
+    ],
+    "profile_binding": {
+      "youwuzhen_seims_sediment": {"model": "SEIMS", "units": ["SLPPOS", "slope_position_unit", "watershed", "subbasin"], "bmp_codes": [1, 2, 3, 4], "evaluators": ["seims", "spatiotemporal_seims", "bmp_net_cost_model"], "required": ["MODEL_DIR", "BIN_DIR", "HOSTNAME", "PORT", "NTHREAD"]},
+      "ftcreek_swatplus_sediment": {"model": "SWAT+", "units": ["HRU"], "bmp_actions": ["up_down_slope", "contour_1-2"], "evaluators": ["swat"], "required": ["template_dir", "executable", "work_root", "hru_ls_aa.txt", "sedyld", "landuse.lum/CONS_PRAC"]},
+      "urban_bioretention_epa_swmm": {"model": "EPA SWMM", "units": ["subcatchment"], "bmp_actions": ["no_lid", "bioretention"], "evaluators": ["epa_swmm"], "metrics": ["runoff_volume", "peak_flow", "total_cost"], "required": ["model_path", "executable", "work_root", "lid_unit_cost", "lid_area_m2"]},
+      "urban_demo_swmm_lid": {"model": "轻量SWMM-LID", "units": ["subcatchment", "subbasin"], "bmp_actions": ["none", "bioretention", "permeable_pavement", "infiltration_trench", "vegetative_swale"], "evaluators": ["swmm_lid"], "metrics": ["runoff_volume", "peak_flow", "tss_load", "total_cost"]}
+    },
+    "status_rules": {"executable": "模型、研究区、指标、空间单元、措施与关键数据均已匹配", "requires_local_paths": "接口存在但本地缺模型路径、可执行文件、数据库或成本数据", "unsupported": "研究区/指标/空间单元/措施没有可用接口，保留用户需求并生成 placeholder 适配信息"}
+  },
+  "mathematical_mapping_kb": {
+    "metadata": {
+      "description": "用于将结构化需求转换为数学形式化表达的规则库",
+      "version": "2.0"
+    },
+    "optimization_objectives": {
+      "mapping_rules": [
+        {
+          "domain_concept": "Sediment reduction",
+          "desc": "增大泥沙的削减率",
+          "semantic_tags": [
+            "水变清",
+            "水土保持",
+            "减少泥沙"
+          ],
+          "evaluator": "SEIMS",
+          "indicator": "Sediment_Reduction_Rate (削减率)",
+          "math_symbol": "R_{sediment}",
+          "optimization_sense": "max"
+        },
+        {
+          "domain_concept": "总磷削减TP reduction",
+          "desc": "增大总磷的削减率",
+          "semantic_tags": [
+            "减少污染",
+            "降磷",
+            "治污",
+            "改善水质"
+          ],
+          "evaluator": "SWAT",
+          "indicator": "TP_Reduction_Rate (削减率)",
+          "math_symbol": "R_{TP}",
+          "optimization_sense": "max"
+        },
+        {
+          "domain_concept": "总氮削减TN reduction",
+          "desc": "增大总氮的削减率",
+          "semantic_tags": [
+            "减少污染",
+            "降氮",
+            "治污",
+            "改善水质"
+          ],
+          "evaluator": "SWAT",
+          "indicator": "TN_Reduction_Rate (削减率)",
+          "math_symbol": "R_{TN}",
+          "optimization_sense": "max"
+        },
+        {
+          "domain_concept": "总成本total cost",
+          "desc": "降低方案的总成本，即实施所有BMP的花费最少，不考虑BMP所创造的经济收入和维护成本",
+          "semantic_tags": [
+            "总成本",
+            "降低成本",
+            "省钱",
+            "预算控制",
+            "经济最优",
+            "少花钱"
+          ],
+          "evaluator": "BMP_cost",
+          "indicator": "Cost (净成本)",
+          "math_symbol": "C_{total}",
+          "optimization_sense": "min"
+        },
+        {
+          "domain_concept": "净花费Net cost",
+          "desc": "降低方案的净成本，即考虑BMP的实施成本、维护成本以及BMP所创造的经济收入后的净花费",
+          "semantic_tags": [
+            "降低净成本",
+            "收益增大",
+            "维护成本"
+          ],
+          "evaluator": "BMP_net_cost",
+          "indicator": "Net_Cost (净成本)",
+          "math_symbol": "C_{net}",
+          "optimization_sense": "min"
+        },
+        {
+          "domain_concept": "SWAT+ FtCreek HRU sediment yield",
+          "desc": "Executable SWAT+ FtCreek HRU-level sediment-yield minimization using CONS_PRAC BMP choices.",
+          "semantic_tags": [
+            "SWAT+",
+            "FtCreek",
+            "HRU",
+            "sediment",
+            "sedyld",
+            "contour",
+            "conservation practice"
+          ],
+          "evaluator": "swat",
+          "indicator": "hru_ls_aa.sedyld sum",
+          "math_symbol": "Y_{sed,hru}",
+          "optimization_sense": "min",
+          "model_profile": "swatplus_ftcreek"
+        }
+      ],
+      "sense_dictionary": {
+        "max": [
+          "提升",
+          "增加",
+          "最大化",
+          "提高",
+          "收益",
+          "削减率"
+        ],
+        "min": [
+          "降低",
+          "减少",
+          "最小化",
+          "控制",
+          "成本",
+          "负荷"
+        ]
+      }
+    },
+    "decision_variables": {
+      "spatial_discretization": {
+        "description": "决策变量x_{i}的空间下标 i 的定义",
+        "discretization_types": [
+          {
+            "name": "Confiled",
+            "desc": "农田/地块单元",
+            "math_notation": "i \\in \\Omega_{field}",
+            "definition": "集合 \\Omega_{field} 表示所有农田地块单元"
+          },
+          {
+            "name": "HRU",
+            "math_notation": "i \\in \\Omega_{hru}",
+            "definition": "集合 \\Omega_{hru} 表示所有水文响应单元"
+          },
+          {
+            "name": "Slope_position",
+            "math_notation": "i \\in \\Omega_{slope}",
+            "definition": "集合 \\Omega_{slope} 表示坡位单元"
+          }
+        ]
+      },
+      "variable_value": {
+        "values": "???????code???{????:1?????:2??????:3?????:4??????:5???/???:6????:7}",
+        "description": "变量的具体取值范围和物理意义",
+        "modes": [
+          {
+            "implementation_mode": "Type_Selection",
+            "math_notation": "x_{i} = BMP_k",
+            "domain": "BMP_k \\in \\{0, 1, 2, ..., M\\}",
+            "meaning": "k表示在地块 i 实施措施 k，0表示不实施, "
+          },
+          {
+            "implementation_mode": "Area_Proportion",
+            "math_notation": "x_{i} = (k,p_{i,k})",
+            "domain": "p_{i,k} \\in [0.0, 1.0]",
+            "meaning": "连续变量：表示在地块 i 实施措施 k 的面积比例 (0 <= p <= 1)。注：当p=0，即表示不布设措施"
+          },
+          {
+            "implementation_mode": "Time_Schedule",
+            "math_notation": "x_{i} = (k,t_{i,k})",
+            "domain": "t_{i,k} \\in T_{years}",
+            "meaning": "整数变量：表示在地块 i 实施措施 k 的具体年份"
+          }
+        ]
+      }
+    },
+    "constraint_library": {
+      "description": "约束条件的数学模板匹配",
+      "templates": [
+        {
+          "type": "Resource_Limitation",
+          "logic_rule": "LHS <= RHS",
+          "semantic_tags": [
+            "预算",
+            "资金",
+            "总面积限制",
+            "上限",
+            "不够用",
+            "最多",
+            "不超过"
+          ],
+          "mathematical_form": "\\sum_{i} \\sum_{k} (Cost_{k} \\cdot Area_{i} \\cdot p_{i,k}) \\le Budget_{limit}",
+          "example": "总成本不能超过100万"
+        },
+        {
+          "type": "Demand_Satisfaction",
+          "logic_rule": "LHS >= RHS",
+          "semantic_tags": [
+            "达标",
+            "至少",
+            "削减目标",
+            "任务要求",
+            "底线",
+            "需满足"
+          ],
+          "mathematical_form": "\\sum_{i} Benefit(x_{i}) \\ge Target_{value}",
+          "example": "泥沙削减率至少达到20%"
+        },
+        {
+          "type": "Spatial_Relation",
+          "logic_rule": "Conditional (If-Then / Either-Or)",
+          "semantic_tags": [
+            "邻接",
+            "上游影响下游",
+            "连片",
+            "互斥",
+            "只能选一个"
+          ],
+          "mathematical_form": "\\sum_{k} x_{i,k} \\le 1 (互斥) \\text{ OR } x_{i,up} \\le x_{j,down} (依赖)",
+          "example": [
+            "每个地块只能选择一种措施",
+            "上下游相邻的两个空间单元不同时配置措施"
+          ]
+        },
+        {
+          "type": "Physical_feasibility",
+          "logic_rule": "x_i ∈ K_{feasible}",
+          "semantic_tags": [
+            "这里已经选择",
+            "这块不能"
+          ],
+          "mathematical_form": "x_i \\in K_{feasible}(Slope_i, Landuse_i)",
+          "example": "地块物理适宜性约束（如：陡坡只能种树）"
+        }
+      ]
+    },
+    "solver_recommendation_rules": [
+      {
+        "condition": "implementation_mode == 'Time_Schedule'",
+        "name": "NSGA2-SpatioTemporal",
+        "reason": "用户选择了分时序实施模式"
+      },
+      {
+        "condition": "implementation_mode == 'Type_Selection' OR implementation_mode == 'Area_Proportion'",
+        "name": "NSGA2-Spatial",
+        "reason": "用户选择了类型/比例选择模式，默认为静态空间优化"
+      },
+      {
+        "condition": "",
+        "name": "NSGA2-prefer",
+        "reason": "用户希望能看到中间结果"
+      }
+    ],
+    "data_meta": {
+      "Youwuzhen": {
+        "description": "游乌镇小流域",
+        "data_sets": [
+          {
+            "resolution": 30,
+            "model_dir": "D:/EGC/SEIMS-dev/data/youwuzhen/demo_youwuzhen30m_longterm_model",
+            "bin_dir": "D:/EGC/SEIMS-dev/build/bin"
+          },
+          {
+            "resolution": 10,
+            "model_dir": "D:/EGC/SEIMS-dev/data/youwuzhen/demo_youwuzhen10m_longterm_model",
+            "bin_dir": "D:/EGC/SEIMS-dev/build/bin"
+          }
+        ]
+      },
+      "swatplus_ftcreek": {
+        "description": "Local FtCreek SWAT+ TxtInOut model for executable HRU-level BMP optimization.",
+        "engine": "swatplus",
+        "time_span": "2000-2005",
+        "spatial_discretization": "HRU",
+        "template_dir": "D:\\EGC\\SEIMS-dev\\data\\gwflow\\Tutorial 2024\\ExampleOptions\\usg\\TxtInOut_FtCreek",
+        "executable": "D:\\EGC\\SEIMS-dev\\data\\gwflow\\Tutorial 2024\\ExampleOptions\\usg\\TxtInOut_FtCreek\\SWAT+.exe"
+      },
+      "swmm_lid_urban_demo": {
+        "description": "Executable P11 urban stormwater LID demo based on a SWMM-style INP file and lightweight event-scale LID equations.",
+        "engine": "lightweight_swmm_lid",
+        "time_span": "single_event_2020-01-01_00:00_to_03:00",
+        "temporal_resolution": "5_min_rainfall_event",
+        "spatial_discretization": "subcatchment",
+        "model_path": "data\\swmm_lid_urban_demo\\model\\urban_lid_demo.inp",
+        "functional_boundary": "Runnable lightweight LID optimization profile; not a full EPA SWMM dynamic hydraulic execution."
+      }
+    },
+    "model_profiles": {
+      "swatplus_ftcreek": {
+        "model_id": "swatplus_ftcreek",
+        "engine": "swatplus",
+        "description": "Local FtCreek SWAT+ TxtInOut model for executable HRU-level BMP optimization.",
+        "template_dir": "D:\\EGC\\SEIMS-dev\\data\\gwflow\\Tutorial 2024\\ExampleOptions\\usg\\TxtInOut_FtCreek",
+        "executable": "D:\\EGC\\SEIMS-dev\\data\\gwflow\\Tutorial 2024\\ExampleOptions\\usg\\TxtInOut_FtCreek\\SWAT+.exe",
+        "work_root": "sandbox_results\\swatplus_runs",
+        "time_span": "2000-2005",
+        "spatial_discretization": "HRU",
+        "decision_binding": {
+          "file": "landuse.lum",
+          "key_column": "NAME",
+          "target_column": "CONS_PRAC",
+          "lu_mgt_names": [
+            "4513080",
+            "4513081",
+            "4513082",
+            "4513084",
+            "4513087",
+            "4513088",
+            "4515986",
+            "4515987",
+            "4515988",
+            "4515989"
+          ],
+          "actions": [
+            "up_down_slope",
+            "contour_1-2"
+          ]
+        },
+        "output_binding": {
+          "hru_sediment_yield": {
+            "output_file": "hru_ls_aa.txt",
+            "metric": "sedyld",
+            "aggregation": "sum"
+          },
+          "hru_surface_nitrate": {
+            "output_file": "hru_ls_aa.txt",
+            "metric": "surqno3",
+            "aggregation": "sum"
+          },
+          "hru_soluble_phosphorus": {
+            "output_file": "hru_ls_aa.txt",
+            "metric": "surqsolp",
+            "aggregation": "sum"
+          }
+        },
+        "runtime_verified": {
+          "date": "2026-06-22",
+          "baseline_sedyld_sum": 980.012,
+          "contour_1_2_sedyld_sum": 979.692,
+          "difference": -0.32,
+          "smoke_script": "tests/run_swatplus_real_bmp_smoke.py"
+        }
+      },
+      "swmm_lid_urban_demo": {
+        "model_id": "swmm_lid_urban_demo",
+        "engine": "lightweight_swmm_lid",
+        "description": "Executable P11 urban stormwater LID demo with runoff volume, peak flow, TSS load, and construction cost metrics.",
+        "model_path": "data\\swmm_lid_urban_demo\\model\\urban_lid_demo.inp",
+        "time_span": "single_event_2020-01-01_00:00_to_03:00",
+        "temporal_resolution": "5_min_rainfall_event; event-scale objective aggregation",
+        "spatial_discretization": "subcatchment",
+        "decision_binding": {
+          "subcatchments": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "actions": [
+            "none",
+            "bioretention",
+            "permeable_pavement",
+            "infiltration_trench",
+            "vegetative_swale"
+          ],
+          "area_fraction": 0.35
+        },
+        "output_binding": {
+          "runoff_volume": {
+            "metric": "runoff_volume",
+            "unit": "m3",
+            "direction": "min"
+          },
+          "peak_flow": {
+            "metric": "peak_flow",
+            "unit": "m3/s",
+            "direction": "min"
+          },
+          "tss_load": {
+            "metric": "tss_load",
+            "unit": "kg",
+            "direction": "min"
+          },
+          "total_cost": {
+            "metric": "total_cost",
+            "unit": "currency",
+            "direction": "min"
+          }
+        },
+        "functional_boundary": "Runnable lightweight LID optimization profile; not a full EPA SWMM dynamic hydraulic execution.",
+        "runtime_verified": {
+          "date": "2026-07-07",
+          "baseline_runoff_volume": 779.4875,
+          "lid_runoff_volume": 667.369725,
+          "baseline_peak_flow": 0.545004,
+          "lid_peak_flow": 0.462678,
+          "baseline_tss_load": 128.615437,
+          "lid_tss_load": 88.59693,
+          "baseline_total_cost": 0.0,
+          "lid_total_cost": 985250.0,
+          "smoke_script": "tests/run_swmm_lid_demo_smoke.py"
+        }
+      }
+    },
+    "canonical_youwuzhen_seims_policy": {
+      "scope": "Supported Youwuzhen SEIMS sediment-cost BMP optimization cases",
+      "purpose": "Guide LLMs to produce the canonical legacy math_model directly, without relying on deterministic postprocess corrections.",
+      "basic_info": {
+        "spatial_scope": "Youwuzhen",
+        "spatial_resolution_for_slope_position": "SLPPOS"
+      },
+      "objective_order_rule": "Environmental sediment objectives must appear first; Net_cost must appear last. Never place the cost objective first.",
+      "objective_name_patterns": {
+        "ordinary_watershed": [
+          "Sediment_reduction",
+          "Net_cost"
+        ],
+        "subbasin_1": [
+          "Sediment_reduction_subbasin_1",
+          "Net_cost"
+        ],
+        "two_temporal_windows_2013_2015_2016_2018": [
+          "Sediment_reduction_2013_2015",
+          "Sediment_reduction_2016_2018",
+          "Net_cost"
+        ],
+        "subbasin_1_early_and_watershed_late": [
+          "Sediment_reduction_subbasin_1_2013_2015",
+          "Sediment_reduction_watershed_2016_2018",
+          "Net_cost"
+        ]
+      },
+      "objective_evaluators": {
+        "Sediment_reduction": "seims",
+        "Net_cost": "bmp_net_cost_model"
+      },
+      "constraint_policy": {
+        "budget_name": "budget_constraint",
+        "budget_type": "Budget_limitation",
+        "budget_form": "Sum(cost) <= <budget>",
+        "budget_evaluator": "bmp_cost_model"
+      },
+      "bmp_code_map": {
+        "Closing_Measures": 1,
+        "Closure_and_Management": 1,
+        "Ecological_Plantations": 2,
+        "Stand_Improvement": 3,
+        "Economic_Fruit_Forests": 4,
+        "Economic_Forest_and_Fruit": 4
+      },
+      "solver": {
+        "Type": "NSGA2 (Spatial)",
+        "GenerationsNum": 1,
+        "PopulationSize": 4
+      },
+      "four_supported_bmp_phrase_rule": "Phrases such as four supported BMPs, four types of support measures, or ?????? mean BMP_type [1, 2, 3, 4].",
+      "early_late_window_rule": "For Youwuzhen 2013-2018 demands, early/?? means 2013-2015 and late/?? means 2016-2018. If two sediment objectives are subbasin 1 then full watershed, generate Sediment_reduction_subbasin_1_2013_2015 and Sediment_reduction_watershed_2016_2018 before Net_cost."
+    },
+    "canonical_swatplus_ftcreek_policy": {
+      "scope": "Registered FtCreek SWAT+ HRU sediment-yield minimization",
+      "time_span_rule": "Use the explicit user evaluation period, e.g. from 2000 to 2005 -> 2000-2005. Do not infer time_span from template_dir, Tutorial 2024, file paths, or software version text.",
+      "basic_info": {
+        "spatial_scope": "FtCreek",
+        "spatial_resolution": "HRU"
+      },
+      "objective": {
+        "name": "hru_sediment_yield",
+        "type": "min",
+        "indicator": "hru_ls_aa.sedyld sum",
+        "evaluator": "swat"
+      },
+      "decision_variable": {
+        "spatial_discretization": "HRU",
+        "BMP_value": {
+          "BMP_type": [
+            0,
+            1
+          ]
+        }
+      },
+      "evaluator": {
+        "swat": {
+          "model_id": "swatplus_ftcreek",
+          "output_file": "hru_ls_aa.txt",
+          "metric": "sedyld",
+          "aggregation": "sum",
+          "decision_binding": {
+            "file": "landuse.lum",
+            "key_column": "NAME",
+            "target_column": "CONS_PRAC",
+            "actions": [
+              "up_down_slope",
+              "contour_1-2"
+            ]
+          }
+        }
+      },
+      "solver": {
+        "Type": "NSGA2 (Spatial)",
+        "GenerationsNum": 1,
+        "PopulationSize": 4
+      }
+    },
+    "canonical_swmm_lid_urban_demo_policy": {
+      "scope": "Registered P11 lightweight SWMM/LID urban runoff-cost optimization",
+      "boundary_rule": "State explicitly that this profile is executable and produces numeric outputs, but it is not a full EPA SWMM hydraulic engine run.",
+      "basic_info": {
+        "spatial_scope": "synthetic 2.8 ha urban catchment",
+        "spatial_resolution": "subcatchment",
+        "time_scope": "single rainfall event"
+      },
+      "objective": [
+        {
+          "name": "runoff_volume",
+          "type": "min",
+          "indicator": "event runoff volume",
+          "evaluator": "swmm_lid"
+        },
+        {
+          "name": "peak_flow",
+          "type": "min",
+          "indicator": "event peak flow",
+          "evaluator": "swmm_lid"
+        },
+        {
+          "name": "tss_load",
+          "type": "min",
+          "indicator": "event TSS load",
+          "evaluator": "swmm_lid"
+        },
+        {
+          "name": "total_cost",
+          "type": "min",
+          "indicator": "LID construction cost",
+          "evaluator": "swmm_lid"
+        }
+      ],
+      "decision_variable": {
+        "spatial_discretization": "subcatchment",
+        "BMP_value": {
+          "BMP_type": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      },
+      "evaluator": {
+        "swmm_lid": {
+          "model_id": "swmm_lid_urban_demo",
+          "model_path": "data\\swmm_lid_urban_demo\\model\\urban_lid_demo.inp",
+          "decision_binding": {
+            "subcatchments": [
+              "S1",
+              "S2",
+              "S3"
+            ],
+            "actions": [
+              "none",
+              "bioretention",
+              "permeable_pavement",
+              "infiltration_trench",
+              "vegetative_swale"
+            ],
+            "area_fraction": 0.35
+          }
+        }
+      },
+      "solver": {
+        "Type": "NSGA2 (Spatial)",
+        "GenerationsNum": 1,
+        "PopulationSize": 4
+      }
+    }
+  }
+}

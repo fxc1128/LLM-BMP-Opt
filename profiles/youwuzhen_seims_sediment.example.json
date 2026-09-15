@@ -1,0 +1,14 @@
+{
+  "profile_id": "youwuzhen_seims_sediment_example",
+  "display_name": "Youwuzhen SEIMS sediment example",
+  "model_family": "SEIMS",
+  "support_status": "requires_local_paths",
+  "aliases": ["youwuzhen", "seims", "sediment"],
+  "supported_targets": ["sediment load", "implementation cost"],
+  "supported_units": ["slope position unit"],
+  "supported_measures": ["BMP type selection"],
+  "default_decision_variable": {"spatial_discretization": "slope position unit", "BMP_value": {"BMP_type": [0, 1, 2, 3]}},
+  "default_evaluator_config": {"seims": {"model_dir": "${SEIMS_MODEL_DIR}", "executable_dir": "${SEIMS_BIN_DIR}"}},
+  "default_solver": {"PopulationSize": 20, "GenerationsNum": 10, "CrossoverRate": 0.8, "MutateRate": 0.1},
+  "payload_notes": ["Replace environment placeholders with a separately obtained, licensed SEIMS model and executable."]
+}

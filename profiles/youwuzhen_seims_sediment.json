@@ -1,0 +1,43 @@
+{
+  "profile_id": "youwuzhen_seims_sediment",
+  "display_name": "Youwuzhen SEIMS sediment BMP optimization",
+  "model_family": "seims",
+  "support_status": "executable",
+  "aliases": ["Youwuzhen", "游屋镇", "游乌镇"],
+  "supported_targets": ["sediment", "sediment_load", "sediment_reduction_rate", "net_cost"],
+  "supported_units": ["SLPPOS", "slope_position_unit", "watershed", "subbasin"],
+  "supported_measures": [
+    {"code": 1, "name": "BMP-1", "label": "closure management"},
+    {"code": 2, "name": "BMP-2", "label": "ecological planting"},
+    {"code": 3, "name": "BMP-3", "label": "low-quality forest improvement"},
+    {"code": 4, "name": "BMP-4", "label": "orchard improvement"}
+  ],
+  "default_decision_variable": {
+    "spatial_discretization": "SLPPOS",
+    "BMP_value": {"BMP_type": [1, 2, 3, 4]}
+  },
+  "default_evaluator_config": {
+    "seims": {
+      "spatial_scope": "Youwuzhen",
+      "time_span": "2013-2017",
+      "MODEL_DIR": "runs/seims_youwuzhen/model",
+      "BIN_DIR": "external/seims/bin",
+      "HOSTNAME": "127.0.0.1",
+      "PORT": "27017",
+      "NTHREAD": "2"
+    },
+    "bmp_net_cost_model": {}
+  },
+  "default_solver": {
+    "Type": "NSGA2 (Spatial)",
+    "GenerationsNum": 10,
+    "PopulationSize": 20,
+    "CrossoverRate": 0.8,
+    "MutateRate": 0.1
+  },
+  "payload_notes": [
+    "Use evaluator 'seims' for sediment reduction objectives.",
+    "Use evaluator 'bmp_net_cost_model' for net cost objectives.",
+    "Use structured Budget_limitation constraints for budget bounds."
+  ]
+}

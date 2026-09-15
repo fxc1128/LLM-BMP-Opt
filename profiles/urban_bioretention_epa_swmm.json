@@ -1,0 +1,24 @@
+{
+  "profile_id": "urban_bioretention_epa_swmm",
+  "display_name": "EPA SWMM bioretention LID optimization",
+  "model_family": "EPA SWMM 5.2.4",
+  "support_status": "executable",
+  "aliases": ["EPA SWMM", "bioretention", "urban LID"],
+  "supported_targets": ["runoff_volume", "peak_flow", "total_cost"],
+  "supported_units": ["subcatchment"],
+  "supported_measures": [{"code": 0, "name": "no_lid"}, {"code": 1, "name": "bioretention"}],
+  "default_decision_variable": {"spatial_discretization": "subcatchment", "candidate_unit_count": 1, "BMP_value": {"BMP_type": [0, 1]}},
+  "default_evaluator_config": {
+    "epa_swmm": {
+      "model_path": "data/swmm/bioretention/bioretention.inp",
+      "executable": "external/swmm/runtime/runswmm.exe",
+      "work_root": "runs/swmm_bioretention",
+      "metric": "runoff_volume",
+      "lid_unit_cost": 95.0,
+      "lid_area_m2": 102.0,
+      "timeout_seconds": 60
+    }
+  },
+  "default_solver": {"PopulationSize": 8, "GenerationsNum": 2, "CrossoverRate": 0.8, "MutateRate": 0.1},
+  "payload_notes": ["Uses the real EPA SWMM command-line engine. The decision enables or disables the published bioretention control."]
+}

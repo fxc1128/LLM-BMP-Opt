@@ -1,0 +1,56 @@
+{
+  "title": "DomainResolutionArtifact",
+  "type": "object",
+  "required": ["stage", "resolutions"],
+  "properties": {
+    "stage": {"const": "domain_resolution"},
+    "resolutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["demand_unit_id", "temporal_domain", "evaluation_domain", "action_domain", "simulation_domain"],
+        "properties": {
+          "demand_unit_id": {"type": "string"},
+          "temporal_domain": {
+            "type": "object",
+            "properties": {
+              "start": {"type": "string"},
+              "end": {"type": "string"},
+              "time_step": {"type": "string"},
+              "season": {"type": "string"},
+              "continuous": {"type": "boolean"}
+            }
+          },
+          "evaluation_domain": {
+            "type": "object",
+            "properties": {
+              "domain_type": {"enum": ["watershed", "subbasin", "field", "admin", "reach", "outlet", "custom", "mixed"]},
+              "raw_text": {"type": "string"},
+              "node_ids": {"type": "array"},
+              "mask_policy": {"type": "string"}
+            }
+          },
+          "action_domain": {
+            "type": "object",
+            "properties": {
+              "mode": {"enum": ["within", "intersect", "upstream", "full_watershed", "explicit", "auto"]},
+              "domain_type": {"enum": ["watershed", "subbasin", "field", "admin", "reach", "outlet", "custom", "mixed"]},
+              "node_ids": {"type": "array"},
+              "unit_type": {"type": "string"},
+              "reason": {"type": "string"}
+            }
+          },
+          "simulation_domain": {
+            "type": "object",
+            "properties": {
+              "domain_type": {"enum": ["watershed", "subbasin", "field", "admin", "reach", "outlet", "custom", "mixed"]},
+              "node_ids": {"type": "array"},
+              "reason": {"type": "string"}
+            }
+          },
+          "uncertainties": {"type": "array"}
+        }
+      }
+    }
+  }
+}
