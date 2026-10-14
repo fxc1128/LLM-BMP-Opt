@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.experts.stage1_bdu_parser import format_bdu_for_prompt
 from src.modeling.profile_registry import ProfileRegistry, merge_profile_defaults
@@ -33,11 +33,30 @@ class Stage2PayloadModeler:
             SystemMessage(content=system_content),
             HumanMessage(content=format_bdu_for_prompt(bdu_artifact)),
         ]
-        response = await self.llm.ainvoke(messages)
-        output = extract_json_object(response.content)
-        output = self._merge_declared_profile_defaults(output)
-        output["payload_validation"] = validate_payload_artifact(output)
-        return output
+        output = None
+        for attempt in range(3):
+            response = await self.llm.ainvoke(messages)
+            output = extract_json_object(response.content)
+            output = self._merge_declared_profile_defaults(output)
+            output["payload_validation"] = validate_payload_artifact(output)
+            if output["payload_validation"]["ok"]:
+                return output
+            if attempt < 2:
+                messages.extend([
+                    AIMessage(content=str(response.content)),
+                    HumanMessage(content=(
+                        "上一个 payload 未通过结构校验。请只修正 JSON 结构并保留需求语义。\n"
+                        + output["payload_validation"]["feedback"]
+                    )),
+                ])
+        return output or {
+            "payload_validation": {
+                "ok": False,
+                "errors": [{"path": "$", "message": "Stage 2 returned no payload.", "allowed": None}],
+                "warnings": [],
+                "feedback": "Stage 2 returned no payload.",
+            }
+        }
 
     def _merge_declared_profile_defaults(self, output: dict[str, Any]) -> dict[str, Any]:
         profile_id = output.get("profile_id")

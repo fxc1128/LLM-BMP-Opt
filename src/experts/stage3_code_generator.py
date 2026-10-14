@@ -34,12 +34,15 @@ class Stage3LLMCodeGenerator:
             template_intro="代码包固定包含 agent_payload.py、main.py、requirements.txt。未支持需求必须额外包含 encoder.py、simulator.py、evaluators.py、constraints.py、README.md，作为用户接入真实研究区模型的骨架。运行时公共库将在打包时作为 runtime/ 目录附带。main.py 必须从 runtime.factory 导入 OptimizationFactory，并以 agent_payload.py 中的 AGENT_PAYLOAD 为输入。",
             knowledge_context=self.knowledge_base.render("stage3"),
             constraints="1. 只生成允许的相对文件名，禁止绝对路径、目录穿越、二进制文件或网络下载代码。\n2. 不得改变 Stage 2 给出的目标、约束、变量、profile_id 和评价器语义。\n3. main.py 必须提供 main()，在运行 Factory 前注册 MyEncoder、MySimulator、目标评价器和约束评价器；不得依赖本项目根目录。\n4. requirements.txt 只列 Python 依赖；外部流域可执行文件与数据路径必须在 README.md 说明，而非伪装成 pip 包。\n5. 使用 placeholder_metric 或 support_status=unsupported 时，必须生成 encoder.py、simulator.py、evaluators.py、constraints.py、README.md。README 首段明确“占位评估，不是科学模拟”，并列出 reason、单位、value_range、adapter_todo。\n6. encoder.py 的 MyEncoder.build 必须返回 DecisionSpace；simulator.py 的 MySimulator.run 必须返回 SimulationResult；其他骨架应保留清晰 TODO。\n7. 所有 Python 代码应可通过 py_compile；输出只包含文件代码块，不加解释文字。",
-            examples="```agent_payload.py\nAGENT_PAYLOAD = {...}\n```\n\n```main.py\nfrom agent_payload import AGENT_PAYLOAD\nfrom runtime.factory import OptimizationFactory\n\ndef main():\n    return OptimizationFactory().run(AGENT_PAYLOAD)\n\nif __name__ == '__main__':\n    main()\n```\n\n```requirements.txt\ndeap>=1.3.0\nnumpy>=1.21.0\n```",
+            examples="```agent_payload.py\nAGENT_PAYLOAD = {...}\n```\n\n```main.py\nfrom agent_payload import AGENT_PAYLOAD\nfrom runtime.factory import OptimizationFactory\n\ndef main():\n    problem, solver = OptimizationFactory.create(AGENT_PAYLOAD)\n    return solver.solve(problem)\n\nif __name__ == '__main__':\n    main()\n```\n\n```requirements.txt\ndeap>=1.3.0\nnumpy>=1.21.0\n```",
             current_state=str({"profile_id": stage2_output.get("profile_id"), "agent_payload": payload}),
             output_format="严格输出带文件名的 fenced code blocks，例如 ```main.py ... ```。必须恰好包含 agent_payload.py、main.py、requirements.txt。",
         )
         response = await self.llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content="请生成 Stage 3 代码包。")])
         contents = self.parse_file_blocks(str(response.content), require_extension_skeletons=requires_extension_skeletons)
+        deterministic = self.package_writer.render_package(dict(payload))
+        for filename in ("agent_payload.py", "main.py", "requirements.txt"):
+            contents[filename] = deterministic.contents[filename]
         return self.package_writer.write_llm_package(contents, output_dir=output_dir)
 
     @staticmethod

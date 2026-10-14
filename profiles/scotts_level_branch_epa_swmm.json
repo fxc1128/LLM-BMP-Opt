@@ -1,0 +1,48 @@
+{
+  "profile_id": "scotts_level_branch_epa_swmm",
+  "display_name": "Scotts Level Branch real watershed Rain Barrel LID optimization",
+  "model_family": "EPA SWMM 5.2.4",
+  "support_status": "executable",
+  "aliases": ["EPA SWMM", "Scotts Level Branch", "real watershed LID"],
+  "supported_targets": ["outlet_runoff_volume", "outlet_peak_flow", "total_cost"],
+  "supported_units": ["subcatchment"],
+  "supported_measures": [
+    {"code": 0, "name": "no_rain_barrel"},
+    {"code": 125, "name": "125_rain_barrels"},
+    {"code": 250, "name": "250_rain_barrels"},
+    {"code": 375, "name": "375_rain_barrels"},
+    {"code": 500, "name": "500_rain_barrels"}
+  ],
+  "default_decision_variable": {
+    "spatial_discretization": "subcatchment",
+    "candidate_unit_count": 6,
+    "BMP_value": {"BMP_type": [0, 125, 250, 375, 500]}
+  },
+  "default_evaluator_config": {
+    "epa_swmm": {
+      "model_path": "data/swmm/scotts_level_branch/SWMM_LID_Continuous.inp",
+      "executable": "external/swmm/runtime/runswmm.exe",
+      "work_root": "runs/swmm_scotts_level_branch",
+      "metric": "outlet_runoff_volume",
+      "target_subcatchment": "W150",
+      "outlet_node": "Outlet",
+      "decision_binding": {
+        "subcatchments": ["W150", "W160", "W180", "W170", "W240", "W260"],
+        "actions": ["0", "125", "250", "375", "500"]
+      },
+      "unit_capex_usd": 100.0,
+      "unit_installation_usd": 0.0,
+      "annual_om_per_unit_usd": 0.0,
+      "analysis_years": 20,
+      "discount_rate": 0.03,
+      "cost_currency_year": 2010,
+      "timeout_seconds": 120
+    }
+  },
+  "default_solver": {"PopulationSize": 20, "GenerationsNum": 10, "CrossoverRate": 0.8, "MutateRate": 0.1},
+  "payload_notes": [
+    "Uses the real EPA SWMM command-line engine on the published Scotts Level Branch watershed model.",
+    "One integer decision variable is assigned to each of the six published subcatchments; it selects 0, 125, 250, 375, or 500 Rain Barrels.",
+    "The default cost is a screening-level purchase-cost scenario: 100 USD per prefabricated 55-gallon barrel in 2010 dollars, with zero installation and O&M cost. Replace these values with local procurement and maintenance data before decision use."
+  ]
+}

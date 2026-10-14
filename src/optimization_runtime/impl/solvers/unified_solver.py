@@ -30,9 +30,8 @@ def _default_initializer(context: dict) -> List[int]:
     if bmp_times:
         values = [int(bmp) * 1000 + int(period) for bmp in bmp_types for period in bmp_times if int(bmp) > 0]
         return [0 if random.random() < zero_probability else random.choice(values) for _ in range(n)]
-    bmp_min = min(bmp_types) if bmp_types else 1
-    bmp_max = max(bmp_types) if bmp_types else 2
-    return [random.randint(bmp_min, bmp_max) for _ in range(n)]
+    values = [int(value) for value in bmp_types] or [1, 2]
+    return [random.choice(values) for _ in range(n)]
 
 
 def _default_crossover(ind1, ind2, context: dict):
@@ -46,8 +45,6 @@ def _default_mutation(ind, context: dict):
     """均匀整数变异"""
     bmp_types = context.get("bmp_types", [1, 2])
     bmp_times = context.get("bmp_time_values", [])
-    bmp_min = min(bmp_types) if bmp_types else 1
-    bmp_max = max(bmp_types) if bmp_types else 2
     indpb = context.get("mut_indpb", 0.1)
     if bmp_times:
         values = [int(bmp) * 1000 + int(period) for bmp in bmp_types for period in bmp_times if int(bmp) > 0]
@@ -56,7 +53,10 @@ def _default_mutation(ind, context: dict):
             if random.random() < indpb:
                 ind[idx] = 0 if random.random() < zero_probability else random.choice(values)
         return ind
-    tools.mutUniformInt(ind, low=bmp_min, up=bmp_max, indpb=indpb)
+    values = [int(value) for value in bmp_types] or [1, 2]
+    for idx in range(len(ind)):
+        if random.random() < indpb:
+            ind[idx] = random.choice(values)
     return ind
 
 

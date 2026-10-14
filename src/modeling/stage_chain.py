@@ -34,11 +34,17 @@ class OpenSourceStageChain:
         output_dir: str | Path | None = None,
         history: list[Any] | None = None,
         requirement_template: dict[str, Any] | None = None,
+        bdu_artifact: dict[str, Any] | None = None,
+        stage2_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        bdu = await self.stage1.parse(user_input, history=history, requirement_template=requirement_template)
+        bdu = bdu_artifact or await self.stage1.parse(
+            user_input,
+            history=history,
+            requirement_template=requirement_template,
+        )
         if bdu.get("status") == "needs_clarification" or execution_mode == 1:
             return {
-                "step": "NEEDS_CLARIFICATION" if bdu.get("status") == "needs_clarification" else "FINISH_STAGE1",
+                "step": "NEEDS_CLARIFICATION" if bdu.get("status") == "needs_clarification" else "FINISH_E1",
                 "bdu": bdu,
                 "governance_checklist": bdu.get("governance_checklist", []),
                 "requirement_template": bdu.get("requirement_template", {}),
@@ -46,10 +52,21 @@ class OpenSourceStageChain:
                 "response": bdu.get("user_message", ""),
             }
 
-        stage2 = await self.stage2.build_payload(bdu)
+        stage2 = stage2_output or await self.stage2.build_payload(bdu)
+        validation = stage2.get("payload_validation", {})
+        if not validation.get("ok", False):
+            return {
+                "step": "E2_VALIDATION_ERROR",
+                "bdu": bdu,
+                "requirement_template": bdu.get("requirement_template", {}),
+                "problem_formulation": stage2.get("problem_formulation", {}),
+                "agent_payload": stage2.get("agent_payload", {}),
+                "payload_validation": validation,
+                "response": validation.get("feedback", "Stage 2 payload validation failed."),
+            }
         if execution_mode == 2:
             return {
-                "step": "FINISH_STAGE2",
+                "step": "FINISH_E2",
                 "bdu": bdu,
                 "governance_checklist": bdu.get("governance_checklist", []),
                 "requirement_template": bdu.get("requirement_template", {}),
@@ -61,7 +78,7 @@ class OpenSourceStageChain:
 
         package = await self.codegen.generate(stage2, output_dir=output_dir)
         return {
-            "step": "FINISH_STAGE3",
+            "step": "FINISH_E3",
             "bdu": bdu,
             "governance_checklist": bdu.get("governance_checklist", []),
             "requirement_template": bdu.get("requirement_template", {}),

@@ -120,12 +120,52 @@ def bdu_to_demand_unit_artifact(bdu_artifact: Mapping[str, Any]) -> dict[str, An
 def validate_payload_artifact(stage2_output: Mapping[str, Any]) -> dict[str, Any]:
     payload = stage2_output.get("agent_payload", {})
     report = validate_artifact("executable_payload", {"stage": "executable_payload", "agent_payload": payload})
+    structural_errors: list[dict[str, Any]] = []
+
+    def add(path: str, message: str) -> None:
+        structural_errors.append({"path": path, "message": message, "allowed": None})
+
+    if not isinstance(payload, Mapping):
+        add("$.agent_payload", "agent_payload must be an object.")
+    else:
+        problem = payload.get("optimization_problem")
+        if not isinstance(problem, Mapping):
+            add("$.agent_payload.optimization_problem", "optimization_problem must be an object.")
+        else:
+            objectives = problem.get("objectives")
+            if not isinstance(objectives, list) or not objectives:
+                add("$.agent_payload.optimization_problem.objectives", "At least one objective is required.")
+            else:
+                evaluator_cfg = payload.get("evaluator", {})
+                for index, objective in enumerate(objectives):
+                    path = f"$.agent_payload.optimization_problem.objectives[{index}]"
+                    if not isinstance(objective, Mapping):
+                        add(path, "Objective must be an object.")
+                        continue
+                    for key in ("name", "type", "evaluator"):
+                        if objective.get(key) in (None, ""):
+                            add(f"{path}.{key}", "Required value is missing.")
+                    evaluator_name = str(objective.get("evaluator", ""))
+                    if evaluator_name and not isinstance(evaluator_cfg, Mapping):
+                        add("$.agent_payload.evaluator", "evaluator configuration must be an object.")
+            decision_variable = problem.get("decision_variable")
+            if not isinstance(decision_variable, Mapping):
+                add("$.agent_payload.optimization_problem.decision_variable", "decision_variable must be an object.")
+        for duplicate in ("objectives", "constraints", "decision_variable"):
+            if duplicate in payload:
+                add(f"$.agent_payload.{duplicate}", f"Move legacy root field '{duplicate}' into optimization_problem.")
+
+    base_errors = [issue.__dict__ for issue in report.errors]
+    all_errors = base_errors + structural_errors
     return {
         "stage": report.stage,
-        "ok": report.ok,
-        "errors": [issue.__dict__ for issue in report.errors],
+        "ok": not all_errors,
+        "errors": all_errors,
         "warnings": [issue.__dict__ for issue in report.warnings],
-        "feedback": report.feedback(),
+        "feedback": report.feedback() if not structural_errors else "\n".join(
+            ["Stage 2 payload structure is invalid."]
+            + [f"- {item['path']}: {item['message']}" for item in structural_errors]
+        ),
     }
 
 

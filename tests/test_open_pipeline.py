@@ -7,8 +7,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
+try:
+    import api_service
+except ModuleNotFoundError:
+    api_service = None
 from src.codegen.template_codegen import TemplateCodeGenerator
+from src.optimization_runtime.capability import inspect_runtime_capability
 from src.optimization_runtime.registry import EncoderRegistry, OptimizerRegistry, SimulatorRegistry
 
 try:
@@ -85,6 +91,60 @@ numpy>=1.21.0
 
 
 class GeneratedPackageTest(unittest.TestCase):
+    @staticmethod
+    def ready_payload():
+        return {
+            "profile_id": "generic_lightweight",
+            "force_lightweight_runtime": True,
+            "support_status": "executable",
+            "optimization_problem": {
+                "objectives": [{"name": "implementation_cost", "type": "min", "evaluator": "bmp_net_cost_model"}],
+                "decision_variable": {"candidate_unit_count": 3, "BMP_value": {"BMP_type": [0, 1]}},
+                "constraints": [],
+            },
+            "evaluator": {"bmp_net_cost_model": {}},
+            "solver": {"Type": "nsga2", "PopulationSize": 4, "GenerationsNum": 1},
+        }
+
+    def test_capability_gate_distinguishes_ready_and_custom_runtime(self):
+        ready_payload = self.ready_payload()
+        self.assertEqual(inspect_runtime_capability(ready_payload)["status"], "ready")
+
+        custom_payload = dict(ready_payload)
+        custom_payload["support_status"] = "unsupported"
+        custom_payload["optimization_problem"] = {
+            **ready_payload["optimization_problem"],
+            "objectives": [{"name": "custom_metric", "type": "max", "evaluator": "placeholder_metric"}],
+        }
+        report = inspect_runtime_capability(custom_payload, {"evaluators.py": "# TODO\nraise NotImplementedError"})
+        self.assertEqual(report["status"], "requires_custom_code")
+        self.assertFalse(report["scientific_execution_allowed"])
+        self.assertIn("evaluators.py", report["customization_files"])
+
+    @unittest.skipUnless(api_service is not None, "FastAPI and langchain-core are required for API integration test")
+    def test_e4_api_preflight_and_execution(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / "api-session"
+            payload = self.ready_payload()
+            TemplateCodeGenerator().render_package(payload, output_dir=package_dir)
+            previous = api_service.pipeline
+            api_service.pipeline = SimpleNamespace(
+                generated_root=Path(temp_dir),
+                session_artifacts=lambda _session_id: {
+                    "stage2": {"agent_payload": payload},
+                    "package_dir": str(package_dir),
+                },
+            )
+            try:
+                preflight = api_service.runtime_preflight(api_service.RuntimePreflightRequest(session_id="api-session"))
+                self.assertTrue(preflight["ready"], preflight)
+                result = api_service.run_e4(api_service.RunRequest(session_id="api-session", timeout_seconds=60))
+            finally:
+                api_service.pipeline = previous
+            self.assertEqual(result["e4_status"], "success", result)
+            self.assertTrue(result["scientific_result"])
+            self.assertEqual(len(result["pareto"]), 4)
+
     def test_execution_registries_build_a_real_decision_space(self):
         payload = {
             "optimization_problem": {"decision_variable": {"candidate_unit_count": 3, "BMP_value": {"BMP_type": [0, 1, 2]}}},
@@ -128,7 +188,7 @@ class OpenChainContractTest(unittest.TestCase):
     def test_fake_llm_runs_three_stages(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             result = asyncio.run(OpenSourceStageChain(FakeLLM()).run("Minimize BMP cost annually.", output_dir=Path(temp_dir) / "package"))
-            self.assertEqual(result["step"], "FINISH_STAGE3")
+            self.assertEqual(result["step"], "FINISH_E3")
 
 
 if __name__ == "__main__":

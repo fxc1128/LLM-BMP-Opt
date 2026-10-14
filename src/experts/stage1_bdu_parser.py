@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Mapping
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.modeling.stage_contracts import bdu_to_demand_unit_artifact, extract_json_object, validate_bdu_artifact
 from src.prompting import OpenKnowledgeBase, build_chinese_stage_prompt
@@ -38,13 +38,40 @@ class Stage1BDUParser:
             constraints="1. 已 CONFIRMED 的字段不可改写；仅可在用户明确纠正时标记 correction_requested。\n2. spatial_scope、time_span、objectives、candidate_measures、discretization 均为进入 Stage 2 前必须确认的字段。\n3. 用户确认“常用/默认/当地 BMP”或“由模型推荐”时，允许填入该默认值并标记 CONFIRMED。\n4. 信息不足时仍输出已知 BDU，不得虚构模型、阈值、流域数据或措施效果。",
             examples="用户：在 Youwuzhen 流域以坡位单元布设当地常用 BMP，评价多年平均，减少泥沙且成本最低。\n字段：治理区域=Youwuzhen（CONFIRMED）；评价时间=多年平均（CONFIRMED）；治理目标=减少泥沙且成本最低（CONFIRMED）；可选措施=当地常用 BMP（CONFIRMED）；空间决策单元=坡位单元（CONFIRMED）。",
             current_state=json.dumps(prior_template, ensure_ascii=False, indent=2),
-            output_format="仅输出一个 JSON 对象：{stage:'bdu', status:'complete|needs_clarification', bdu_list:[...], governance_checklist:[...], requirement_template:{字段:{value,status}}, user_message:'...' }。",
+            output_format=(
+                "仅输出一个 JSON 对象。每个 bdu_list 项必须严格包含："
+                "{id:'BDU_1', Sub:'利益相关方', "
+                "Tar:{variable:'目标变量', metric:'计算指标', operator:'minimize|maximize|<=|>=|==', threshold:null, unit:'单位'}, "
+                "BMP_Pref:{unit_hint:'空间决策单元', measures:[], implementation_mode:'type_selection'}, "
+                "Scope:{spatial:'空间范围', temporal:'时间范围'}, source_text:'用户原文', uncertainties:[]}。"
+                "根对象格式：{stage:'bdu', status:'complete|needs_clarification', bdu_list:[...], "
+                "governance_checklist:[...], requirement_template:{字段:{value,status}}, user_message:'...'}。"
+            ),
         )
         messages = [SystemMessage(content=prompt), *(history or [])[-6:], HumanMessage(content=user_input)]
-        response = await self.llm.ainvoke(messages)
-        artifact = extract_json_object(response.content)
-        report = validate_bdu_artifact(artifact)
-        report.raise_for_errors()
+        artifact = None
+        last_error = None
+        for attempt in range(3):
+            response = await self.llm.ainvoke(messages)
+            try:
+                artifact = extract_json_object(response.content)
+                report = validate_bdu_artifact(artifact)
+                report.raise_for_errors()
+                break
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                last_error = exc
+                if attempt == 2:
+                    raise ValueError(f"Stage 1 output validation failed after 3 attempts: {exc}") from exc
+                messages.extend([
+                    AIMessage(content=str(response.content)),
+                    HumanMessage(content=(
+                        "上一个 JSON 不符合契约。请只修复 JSON，不改变用户需求。"
+                        f"校验错误：{exc}。每个 BDU 必须包含 id、Sub、Tar.variable、"
+                        "Tar.metric、Tar.operator、BMP_Pref 和 Scope。"
+                    )),
+                ])
+        if artifact is None:
+            raise ValueError(f"Stage 1 did not produce a valid artifact: {last_error}")
         template = self._merge_template(prior_template, artifact.get("requirement_template"), artifact)
         missing_fields = [key for key, value in template.items() if value["status"] != "CONFIRMED"]
         artifact["requirement_template"] = template
